@@ -9,6 +9,9 @@
   --color-line: #d9dccf;
   --color-line-strong: #b9beac;
 
+  /* Amabara ya Dark Mode (Aza gukora iyo `.dark` yajemo) */
+  --variant-dark: .dark &;
+
   --color-moto-50: #e7f1ea;
   --color-moto-100: #c7ddcd;
   --color-moto-400: #2c8157;
@@ -32,6 +35,20 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
+/* ---- Guhindura amabara y'ibanze mu mizi (CSS Variables) mu buryo bwa Dark Mode ---- */
+:root.dark {
+  --color-paper: #0c1410;          /* Ink soft/dark background */
+  --color-paper-raised: #141f1a;   /* Paper y'imbere mwijima */
+  --color-ink: #f1f4f2;            /* Ibyandiko byera */
+  --color-ink-soft: #a1ada5;       /* Ibyandiko by'imbanziriza mukara */
+  --color-line: #1f2e26;           /* Imirongo y'umwijima */
+  --color-line-strong: #33473c;
+
+  /* Ushobora no guhindura amabara amwe ya moto niba ushaka ko arembya mu mwijima */
+  --color-moto-50: #0c2a1d;
+  --color-moto-100: #14442f;
+}
+
 @layer base {
   * { border-color: var(--color-line); }
   html, body, #root { height: 100%; }
@@ -41,6 +58,7 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
   ::selection { background: var(--color-moto-100); }
@@ -79,6 +97,7 @@
     font-weight: 600;
     background: var(--color-paper-raised);
     white-space: nowrap;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
   .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
