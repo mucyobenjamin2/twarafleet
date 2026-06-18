@@ -1,55 +1,42 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Menu, Bell, LogOut } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabaseClient'
+import { Menu, Sun, Moon } from 'lucide-react'
 
-export default function Topbar({ onOpenMenu }) {
-  const { profile, signOut } = useAuth()
-  const [unread, setUnread] = useState(0)
-
-  useEffect(() => {
-    if (!profile?.id) return
-    let active = true
-    async function load() {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-        .eq('is_read', false)
-      if (active) setUnread(count ?? 0)
-    }
-    load()
-    const interval = setInterval(load, 60000)
-    return () => { active = false; clearInterval(interval) }
-  }, [profile])
-
-  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
-
+export default function Topbar({ onOpenMenu, darkMode, setDarkMode }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-paper-raised/90 px-4 py-3 backdrop-blur sm:px-6">
-      <div className="flex items-center gap-3">
-        <button onClick={onOpenMenu} className="rounded-lg p-1.5 text-ink hover:bg-paper lg:hidden" aria-label="Open menu">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-paper-raised px-4 sm:px-6">
+      
+      {/* IGICE CY'IBUMOSO: Akaboneka gafungura Menu kuri Terefoni (Hamburger Menu) */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onOpenMenu}
+          className="rounded-lg p-1.5 text-ink-soft hover:bg-paper lg:hidden cursor-pointer"
+          aria-label="Open menu"
+        >
           <Menu size={20} />
         </button>
-        <div>
-          <p className="font-display text-sm font-semibold text-ink sm:text-base">{today}</p>
-          <p className="text-xs text-ink-soft">{profile?.full_name ? `Welcome back, ${profile.full_name.split(' ')[0]}` : 'Welcome back'}</p>
-        </div>
+        
+        {/* Izina ry'urubuga cyangwa paji rugaragara kuri PC */}
+        <span className="hidden font-display font-bold text-ink sm:block">
+          TwaraFleet
+        </span>
       </div>
-      <div className="flex items-center gap-2">
-        <Link to="/notifications" className="relative rounded-lg p-2 text-ink-soft hover:bg-paper hover:text-ink" aria-label="Notifications">
-          <Bell size={19} />
-          {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rust-500 px-1 text-[10px] font-semibold text-white">
-              {unread > 9 ? '9+' : unread}
-            </span>
-          )}
-        </Link>
-        <button onClick={signOut} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-ink-soft hover:bg-paper hover:text-ink" aria-label="Sign out">
-          <LogOut size={16} className="hidden sm:block" />
-          <span className="hidden sm:inline">Sign out</span>
+
+      {/* IGICE CY'IBURYO: Aho dushize ya Button ya Dark Mode n'ibindi bice */}
+      <div className="flex items-center gap-4">
+        
+        {/* --- IYI NI YO BUTTON YA DARK MODE TWAYIZEHO --- */}
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="rounded-full border border-line bg-paper p-2 text-ink cursor-pointer hover:bg-paper-raised transition-colors duration-200"
+          aria-label="Toggle Dark Mode"
+        >
+          {darkMode ? <Sun size={18} className="text-cash-500" /> : <Moon size={18} />}
         </button>
+
+        {/* Akanyandiko k'Umukoresha (User Profile Avatar) - Gashobora kuba karemye gutya */}
+        <div className="h-8 w-8 rounded-full bg-moto-500 flex items-center justify-center text-white font-semibold text-sm">
+          TF
+        </div>
+        
       </div>
     </header>
   )
