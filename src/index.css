@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- color: ledger / dispatch-board palette ---- */
+  --color-paper: #eff1ec;
+  --color-paper-raised: #f8f9f5;
+  --color-ink: #15201a;
+  --color-ink-soft: #4e5950;
+  --color-line: #d9dccf;
+  --color-line-strong: #b9beac;
+
+  --color-moto-50: #e7f1ea;
+  --color-moto-100: #c7ddcd;
+  --color-moto-400: #2c8157;
+  --color-moto-500: #1f6f4a;
+  --color-moto-600: #185c3d;
+  --color-moto-700: #14442f;
+  --color-moto-900: #0c2a1d;
+
+  --color-cash-100: #f5e6c4;
+  --color-cash-400: #d6a23e;
+  --color-cash-500: #c8932b;
+  --color-cash-600: #a3741d;
+
+  --color-rust-100: #f3d9d0;
+  --color-rust-400: #c25d44;
+  --color-rust-500: #b8472f;
+  --color-rust-600: #963823;
+
+  --font-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  * { border-color: var(--color-line); }
+  html, body, #root { height: 100%; }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  ::selection { background: var(--color-moto-100); }
+
+  /* visible keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid var(--color-moto-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  input, select, textarea {
+    font-family: var(--font-body);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-mono { font-family: var(--font-mono); }
+
+  .plate {
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 4px;
+    padding: 0.1rem 0.45rem;
+    font-weight: 600;
+    background: var(--color-paper-raised);
+    white-space: nowrap;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 999px; }
+}
