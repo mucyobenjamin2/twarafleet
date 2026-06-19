@@ -8,22 +8,27 @@ export function useDashboardStats() {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
+    // 1. Guhamagara umukoresha winjiye (The Logged-in Boss)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const today = todayStr()
     const horizon = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
 
+    // 2. Kuyungurura kuri buri query byose bigahita bihabwa .eq('user_id', user.id)
     const [
       motorcycles, todaysVersements, activeDebts, insurance, tax, inspections, reminders, savingsGoals, fleetGoals, recentVersements
     ] = await Promise.all([
-      supabase.from('motorcycles').select('id, plate_number, status, daily_target'),
-      supabase.from('versements').select('motorcycle_id, amount, status').eq('collection_date', today),
-      supabase.from('debts').select('id, motorcycle_id, remaining_amount, status').eq('status', 'active'),
-      supabase.from('insurance_records').select('id, expiry_date, motorcycles(plate_number)').lte('expiry_date', horizon).gte('expiry_date', today),
-      supabase.from('tax_records').select('id, due_date, motorcycles(plate_number)').neq('status', 'paid').lte('due_date', horizon),
-      supabase.from('inspections').select('id, next_due_date, motorcycles(plate_number)').lte('next_due_date', horizon).gte('next_due_date', today),
-      supabase.from('reminders').select('id, title, due_date, status').eq('status', 'pending').lte('due_date', horizon),
-      supabase.from('savings_goals').select('id, goal_name, current_amount, target_amount, status, motorcycles(plate_number)').eq('status', 'active'),
-      supabase.from('fleet_savings_goals').select('id, goal_name, current_amount, target_amount, status').eq('status', 'active'),
-      supabase.from('versements').select('id, collection_date, amount, status, motorcycles(plate_number)').order('collection_date', { ascending: false }).limit(8)
+      supabase.from('motorcycles').select('id, plate_number, status, daily_target').eq('user_id', user.id),
+      supabase.from('versements').select('motorcycle_id, amount, status').eq('collection_date', today).eq('user_id', user.id),
+      supabase.from('debts').select('id, motorcycle_id, remaining_amount, status').eq('status', 'active').eq('user_id', user.id),
+      supabase.from('insurance_records').select('id, expiry_date, motorcycles(plate_number)').lte('expiry_date', horizon).gte('expiry_date', today).eq('user_id', user.id),
+      supabase.from('tax_records').select('id, due_date, motorcycles(plate_number)').neq('status', 'paid').lte('due_date', horizon).eq('user_id', user.id),
+      supabase.from('inspections').select('id, next_due_date, motorcycles(plate_number)').lte('next_due_date', horizon).gte('next_due_date', today).eq('user_id', user.id),
+      supabase.from('reminders').select('id, title, due_date, status').eq('status', 'pending').lte('due_date', horizon).eq('user_id', user.id),
+      supabase.from('savings_goals').select('id, goal_name, current_amount, target_amount, status, motorcycles(plate_number)').eq('status', 'active').eq('user_id', user.id),
+      supabase.from('fleet_savings_goals').select('id, goal_name, current_amount, target_amount, status').eq('status', 'active').eq('user_id', user.id),
+      supabase.from('versements').select('id, collection_date, amount, status, motorcycles(plate_number)').eq('user_id', user.id).order('collection_date', { ascending: false }).limit(8)
     ])
 
     const fleet = motorcycles.data ?? []

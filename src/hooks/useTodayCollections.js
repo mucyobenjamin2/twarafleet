@@ -11,11 +11,16 @@ export function useTodayCollections() {
   const saturday = isSaturday(today)
 
   const load = useCallback(async () => {
+    // 1. Guhamagara umukoresha winjiye (The Logged-in Boss)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // 2. Kuyungurura amakuru yose ukoresheje .eq('user_id', user.id)
     const [motos, assignments, versements, nonWorking] = await Promise.all([
-      supabase.from('motorcycles').select('id, plate_number, daily_target').eq('status', 'active').order('plate_number'),
-      supabase.from('driver_assignments').select('motorcycle_id, driver_id, drivers(full_name)').eq('is_active', true),
-      supabase.from('versements').select('*').eq('collection_date', today),
-      supabase.from('non_working_days').select('motorcycle_id').eq('date', today)
+      supabase.from('motorcycles').select('id, plate_number, daily_target').eq('status', 'active').eq('user_id', user.id).order('plate_number'),
+      supabase.from('driver_assignments').select('motorcycle_id, driver_id, drivers(full_name)').eq('is_active', true).eq('user_id', user.id),
+      supabase.from('versements').select('*').eq('collection_date', today).eq('user_id', user.id),
+      supabase.from('non_working_days').select('motorcycle_id').eq('date', today).eq('user_id', user.id)
     ])
 
     const assignmentByMoto = Object.fromEntries((assignments.data ?? []).map(a => [a.motorcycle_id, a]))
