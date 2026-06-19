@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { useTable } from '../hooks/useTable'
+import { useAuth } from '../contexts/AuthContext' // <-- 1. Twongeyeho AuthContext ngo itwunganire
 import DataTable from './DataTable'
 import ResourceForm from './ResourceForm'
 import Modal from './Modal'
@@ -12,6 +13,7 @@ function getNested(obj, path) {
 }
 
 export default function ResourcePage({ config }) {
+  const { user } = useAuth() // <-- 2. Gufata umu-user winjiye muri uyu mwanya
   const { rows, loading, error, create, update, remove } = useTable(config.table, { select: config.select })
   const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row }
   const [pendingDelete, setPendingDelete] = useState(null)
@@ -23,9 +25,12 @@ export default function ResourcePage({ config }) {
     return rows.filter(row => config.searchKeys.some(key => String(getNested(row, key) ?? '').toLowerCase().includes(q)))
   }, [rows, query, config.searchKeys])
 
+  // <-- 3. HANO NI HO TWAKOSOYE: Gushyiramo owner_id ku makuru yose andikwa cyangwa ahindurwa
   async function handleSubmit(values) {
-    if (modal.mode === 'edit') await update(modal.row.id, values)
-    else await create(values)
+    const payload = { ...values, owner_id: user?.id } // Komeka ID y'umuboss ku makuru
+    
+    if (modal.mode === 'edit') await update(modal.row.id, payload)
+    else await create(payload)
     setModal(null)
   }
 
