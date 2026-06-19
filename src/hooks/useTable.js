@@ -1,57 +1,55 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { useAuth } from '../contexts/AuthContext'
-import { logActivity } from '../lib/format'
 
-/**
- * Generic list/create/update/delete hook for a Supabase table.
- * select: optional postgrest select string (for joined relation columns)
- */
-export function useTable(table, { select = '*', orderBy = { column: 'created_at', ascending: false }, filters = [] } = {}) {
-  const { profile } = useAuth()
+export function useTable(tableName, options = {}) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const orderKey = useMemo(() => JSON.stringify(orderBy), [orderBy])
-  const filterKey = useMemo(() => JSON.stringify(filters), [filters])
+  const load = useCallback(async () => {
+    try {
+      setLoading(true)
+      // 1. Gufata umuser winjiye
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    let query = supabase.from(table).select(select)
-    filters.forEach(f => { query = query.eq(f.column, f.value) })
-    if (orderBy) query = query.order(orderBy.column, { ascending: orderBy.ascending })
-    const { data, error: err } = await query
-    if (err) setError(err.message)
-    setRows(data ?? [])
-    setLoading(false)
-  }, [table, select, orderKey, filterKey])
+      // 2. Guhamagara amakuru tuyungurura kuri owner_id y'uyu muser
+      let query = supabase.from(tableName).select(options.select || '*')
+      
+      // Fungura amakuru y'uyu muser gusa niba table ifite owner_id
+      query = query.eq('owner_id', user.id)
 
-  useEffect(() => { refresh() }, [refresh])
+      const { data, error: fetchError } = await query
+      if (fetchError) throw fetchError
+      setRows(data || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [tableName, options.select])
 
-  const create = useCallback(async (values) => {
-    const { data, error: err } = await supabase.from(table).insert(values).select().maybeSingle()
+  const create = async (values) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const payload = { ...values, owner_id: user?.id } // Komeka owner_id ku makuru mashya
+    const { error: err } = await supabase.from(tableName).insert([payload])
     if (err) throw err
-    await logActivity({ userId: profile?.id, action: 'create', entityType: table, entityId: data?.id, details: values })
-    await refresh()
-    return data
-  }, [table, refresh, profile])
+    load()
+  }
 
-  const update = useCallback(async (id, values) => {
-    const { data, error: err } = await supabase.from(table).update(values).eq('id', id).select().maybeSingle()
+  const update = async (id, values) => {
+    const { error: err } = await supabase.from(tableName).update(values).eq('id', id)
     if (err) throw err
-    await logActivity({ userId: profile?.id, action: 'update', entityType: table, entityId: id, details: values })
-    await refresh()
-    return data
-  }, [table, refresh, profile])
+    load()
+  }
 
-  const remove = useCallback(async (id) => {
-    const { error: err } = await supabase.from(table).delete().eq('id', id)
+  const remove = async (id) => {
+    const { error: err } = await supabase.from(tableName).delete().eq('id', id)
     if (err) throw err
-    await logActivity({ userId: profile?.id, action: 'delete', entityType: table, entityId: id })
-    await refresh()
-  }, [table, refresh, profile])
+    load()
+  }
 
-  return { rows, loading, error, refresh, create, update, remove }
+  useEffect(() => { load() }, [load])
+
+  return { rows, loading, error, create, update, remove, refresh: load }
 }
