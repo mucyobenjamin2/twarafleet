@@ -35,21 +35,23 @@ export const driverConfig = {
   select: '*',
   titleSingular: 'Driver',
   titlePlural: 'Drivers',
-  searchKeys: ['full_name', 'phone_number', 'national_id'],
+  searchKeys: ['full_name', 'phone_number', 'national_id', 'email'],
   columns: [
     { key: 'full_name', label: 'Name' },
     { key: 'phone_number', label: 'Phone' },
-    { key: 'national_id', label: 'National ID' },
+    { key: 'email', label: 'Email' },
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
     { key: 'full_name', label: 'Full name', type: 'text', required: true },
     { key: 'national_id', label: 'National ID', type: 'text' },
     { key: 'phone_number', label: 'Phone number', type: 'text' },
+    { key: 'email', label: 'Driver Email (For Login)', type: 'text', required: true },
+    { key: 'password', label: 'Temporary Password', type: 'text', required: true },
     { key: 'address', label: 'Address', type: 'textarea' },
     { key: 'emergency_contact', label: 'Emergency contact', type: 'text' },
     { key: 'photo_url', label: 'Photo', type: 'file', folder: 'drivers' },
-    { key: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], default: 'active' }
+    { key: 'status', label: 'Status', type: 'select', options: ['active', 'suspended', 'inactive'], default: 'active' }
   ]
 }
 
@@ -85,7 +87,8 @@ export const expenseConfig = {
     { key: 'motorcycles.plate_number', label: 'Motorcycle', plate: true },
     { key: 'category', label: 'Category', badge: true },
     { key: 'expense_date', label: 'Date', date: true },
-    { key: 'amount', label: 'Amount', money: true }
+    { key: 'amount', label: 'Amount', money: true },
+    { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
     { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
@@ -93,6 +96,7 @@ export const expenseConfig = {
     { key: 'expense_date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved'], default: 'pending' },
     { key: 'receipt_url', label: 'Receipt', type: 'file', folder: 'receipts' }
   ]
 }
@@ -272,9 +276,9 @@ export const versementConfig = {
     { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name' } },
     { key: 'collection_date', label: 'Collection date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
-    { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'cash' },
+    { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'mobile_money' },
     { key: 'reference_number', label: 'Reference number', type: 'text' },
-    { key: 'status', label: 'Status', type: 'select', options: ['paid', 'unpaid', 'partial'], default: 'paid' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved', 'partial', 'unpaid'], default: 'pending' },
     { key: 'screenshot_url', label: 'Payment screenshot', type: 'file', folder: 'versements' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
   ]

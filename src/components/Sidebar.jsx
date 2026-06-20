@@ -5,6 +5,9 @@ import {
   FolderOpen, History, Settings as SettingsIcon
 } from 'lucide-react'
 
+// Kuzana logo yawe nshya ivuye muri assets folder
+import twaraLogo from '../assets/logo.png'
+
 const GROUPS = [
   { items: [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true }] },
   {
@@ -48,8 +51,12 @@ const GROUPS = [
 export default function Sidebar({ onNavigate }) {
   return (
     <nav className="flex h-full flex-col gap-5 overflow-y-auto px-3 py-5 scrollbar-thin">
-      <div className="flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-moto-500 font-display text-base font-bold text-white">T</div>
+      
+      {/* Igice cy'Ikirango */}
+      <div className="flex items-center gap-3 px-2">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[#003d29] shadow-sm">
+          <img src={twaraLogo} alt="TwaraFleet Logo" className="h-full w-full object-cover" />
+        </div>
         <div>
           <p className="font-display text-base font-semibold leading-tight text-ink">TwaraFleet</p>
           <p className="text-[11px] leading-tight text-ink-soft">Fleet ledger</p>
@@ -72,6 +79,7 @@ export default function Sidebar({ onNavigate }) {
                   }`
                 }
               >
+                {/* Icons na Text iyo ziri kuri active zihabwa text-white hano */}
                 <item.icon size={16} />
                 {item.label}
               </NavLink>

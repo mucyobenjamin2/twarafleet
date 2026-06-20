@@ -1,24 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- color: ledger / dispatch-board palette ---- */
-  --color-paper: #eff1ec;
-  --color-paper-raised: #f8f9f5;
-  --color-ink: #15201a;
-  --color-ink-soft: #4e5950;
-  --color-line: #d9dccf;
-  --color-line-strong: #b9beac;
+  /* ---- color: ledger / dispatch-board palette (Brand Colors) ---- */
+  --color-paper: #f8f9fa;        /* Light mode layout background - Icyeye cyiza */
+  --color-paper-raised: #ffffff; /* Light mode cards/sidebar background - Umweru pfa */
+  --color-ink: #0f172a;          /* Ibyandiko by'imvaho mu muco wa Light mode */
+  --color-ink-soft: #475569;     /* Slate 600 - Ibyandiko by'imvi bicyeye */
+  --color-line: #e2e8f0;         /* Imirongo isobanutse neza (Slate 200) */
+  --color-line-strong: #cbd5e1;  /* Slate 300 */
 
   /* Amabara ya Dark Mode (Aza gukora iyo `.dark` yajemo) */
   --variant-dark: .dark &;
 
-  --color-moto-50: #e7f1ea;
-  --color-moto-100: #c7ddcd;
-  --color-moto-400: #2c8157;
-  --color-moto-500: #1f6f4a;
-  --color-moto-600: #185c3d;
-  --color-moto-700: #14442f;
-  --color-moto-900: #0c2a1d;
+  /* Amabara ya Brand Green (#003d29) n'ayandi ayashamikiyeho - Ngaho hano ngo Light mode iyabone */
+  --color-moto-50: #e6f0ed;
+  --color-moto-100: #c2d8d1;
+  --color-moto-400: #005c3e;
+  --color-moto-500: #003d29; /* Icyatsi cy'umwimerere cya TwaraFleet Logo */
+  --color-moto-600: #00291b;
+  --color-moto-700: #001f14;
+  --color-moto-900: #000f0a;
 
   --color-cash-100: #f5e6c4;
   --color-cash-400: #d6a23e;
@@ -35,18 +36,14 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* ---- Guhindura amabara y'ibanze mu mizi (CSS Variables) mu buryo bwa Dark Mode ---- */
+/* ---- Guhindura amabara y'ibanze mu mizi mu buryo bwa Dark Mode (Consistent Slate Theme) ---- */
 :root.dark {
-  --color-paper: #0c1410;          /* Ink soft/dark background */
-  --color-paper-raised: #141f1a;   /* Paper y'imbere mwijima */
-  --color-ink: #f1f4f2;            /* Ibyandiko byera */
-  --color-ink-soft: #a1ada5;       /* Ibyandiko by'imbanziriza mukara */
-  --color-line: #1f2e26;           /* Imirongo y'umwijima */
-  --color-line-strong: #33473c;
-
-  /* Ushobora no guhindura amabara amwe ya moto niba ushaka ko arembya mu mwijima */
-  --color-moto-50: #0c2a1d;
-  --color-moto-100: #14442f;
+  --color-paper: #0f172a;        /* Background y'umwijima yose (Slate 900) */
+  --color-paper-raised: #1e293b; /* Amakarita n'amapaji y'imbere (Slate 800) */
+  --color-ink: #f8fafc;          /* Ibyandiko byera (Slate 50) */
+  --color-ink-soft: #94a3b8;     /* Ibyandiko by'imvi (Slate 400) */
+  --color-line: #334155;         /* Imirongo y'umwijima (Slate 700) */
+  --color-line-strong: #475569;  /* Slate 600 */
 }
 
 @layer base {
