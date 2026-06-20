@@ -24,35 +24,24 @@ export function AuthProvider({ children }) {
       setSession(newSession)
       loadProfile(newSession?.user?.id)
 
-      // Niba umuser yasohotse (SIGNED_OUT), mumenyeshe window ihite isubira kuri /login
       if (event === 'SIGNED_OUT') {
         window.location.href = '/login'
-      }
-      // Niba yinjiye (SIGNED_IN), muherekeze kuri dashboard
-      if (event === 'SIGNED_IN' && window.location.pathname === '/login') {
-        window.location.href = '/'
       }
     })
     return () => sub.subscription.unsubscribe()
   }, [loadProfile])
 
   const signIn = async (email, password) => {
-    const res = await supabase.auth.signInWithPassword({ email, password })
-    if (!res.error) {
-      window.location.href = '/'
-    }
-    return res
+    return await supabase.auth.signInWithPassword({ email, password })
   }
 
   const signUp = (email, password, fullName) =>
     supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
 
-  // Twashyizemo byombi: signOut na logout kugira ngo Topbar itazagira ikibazo
   const signOut = () => supabase.auth.signOut()
-  const logout = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut, logout }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut, logout: signOut }}>
       {children}
     </AuthContext.Provider>
   )
