@@ -45,33 +45,33 @@ export default function DriverDashboard() {
       setSubmitting(true);
       setMsg({ type: '', text: '' });
 
-      // 1. SOMA DRIVER REFERENCE IRI MURI PUBLIC.DRIVERS TABLE (Twongeyemo .select('*'))
+      // 1. SOMA DRIVER REFERENCE ISHINGIYE KURI EMAIL
       const { data: driverData, error: driverErr } = await supabase
         .from('drivers')
         .select('*')
-        .eq('auth_user_id', profile.id)
+        .eq('email', profile?.email)
         .single();
 
       if (driverErr || !driverData) throw new Error("Umushoferi ntabwo abonetse muri sisitemu.");
 
-      // 2. SOMA MOTORCYCLE_ID IRI MURI DRIVER_ASSIGNMENTS NYAYO ISANZWE IRI ACTIVE (Twongeyemo .select('*'))
+      // 2. SOMA MOTORCYCLE_ID IRI MURI DRIVER_ASSIGNMENTS NYAYO ISANZWE IRI ACTIVE
       const { data: assignData } = await supabase
         .from('driver_assignments')
         .select('*')
         .eq('driver_id', driverData.id)
         .eq('is_active', true)
-        .maybeSingle(); // .maybeSingle() irarinda ikosa niba nta moto afite bataramuha
+        .maybeSingle();
 
       // 3. INJIZA VERSEMENT MURI DATABASE
       const { error: insertErr } = await supabase.from('versements').insert([{
-        owner_id: driverData.owner_id, // Komeka kuri Admin we directly
+        owner_id: driverData.owner_id, 
         driver_id: driverData.id,
-        motorcycle_id: assignData?.motorcycle_id || null, // Niba iharidde iye
+        motorcycle_id: assignData?.motorcycle_id || null, 
         collection_date: date,
         amount: parseFloat(amount),
         payment_method: 'mobile_money',
         reference_number: transactionId || null,
-        status: 'pending' // Ihita iba pending kugeza Admin ayemeje
+        status: 'pending' // ✅ pending mu nyuguti ntoya nk'uko database ibyifuza
       }]);
 
       if (insertErr) throw insertErr;
