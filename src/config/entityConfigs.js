@@ -1,6 +1,5 @@
 // Declarative config consumed by ResourcePage.jsx so 12 of the 16 feature
 // tables share one generic list+form implementation instead of 12 near-duplicates.
-// field.type: text | textarea | number | date | select | relation | boolean | file
 
 export const motorcycleConfig = {
   table: 'motorcycles',
@@ -35,15 +34,23 @@ export const driverConfig = {
   select: '*',
   titleSingular: 'Driver',
   titlePlural: 'Drivers',
-  searchKeys: ['full_name', 'phone_number', 'national_id', 'email'],
+  searchKeys: ['full_name', 'phone_number', 'national_id', 'email', 'plate_number'],
   columns: [
     { key: 'full_name', label: 'Name' },
     { key: 'phone_number', label: 'Phone' },
     { key: 'email', label: 'Email' },
+    { key: 'plate_number', label: 'Plate Number' },
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
     { key: 'full_name', label: 'Full name', type: 'text', required: true },
+    { 
+      key: 'plate_number', 
+      label: 'Select Motorcycle Plate', 
+      type: 'relation', 
+      relation: { table: 'motorcycles', labelKey: 'plate_number' }, 
+      required: true 
+    },
     { key: 'national_id', label: 'National ID', type: 'text' },
     { key: 'phone_number', label: 'Phone number', type: 'text' },
     { key: 'email', label: 'Driver Email (For Login)', type: 'text', required: true },
@@ -79,15 +86,16 @@ export const assignmentConfig = {
 
 export const expenseConfig = {
   table: 'expenses',
-  select: '*, motorcycles(plate_number)',
+  select: '*, motorcycles(plate_number)', 
   titleSingular: 'Expense',
   titlePlural: 'Expenses',
-  searchKeys: [],
+  searchKeys: ['category', 'description'],
   columns: [
-    { key: 'motorcycles.plate_number', label: 'Motorcycle', plate: true },
+    { key: 'motorcycles.plate_number', label: 'Motorcycle', plate: true }, 
     { key: 'category', label: 'Category', badge: true },
     { key: 'expense_date', label: 'Date', date: true },
     { key: 'amount', label: 'Amount', money: true },
+    { key: 'description', label: 'Description' }, 
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
@@ -96,7 +104,7 @@ export const expenseConfig = {
     { key: 'expense_date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid'], default: 'pending' },
     { key: 'receipt_url', label: 'Receipt', type: 'file', folder: 'receipts' }
   ]
 }
@@ -278,7 +286,7 @@ export const versementConfig = {
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'mobile_money' },
     { key: 'reference_number', label: 'Reference number', type: 'text' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved', 'partial', 'unpaid'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid', 'partial', 'unpaid'], default: 'pending' },
     { key: 'screenshot_url', label: 'Payment screenshot', type: 'file', folder: 'versements' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
   ]
