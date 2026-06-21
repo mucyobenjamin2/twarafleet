@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { LogOut, Moon, Sun, DollarSign, Wrench, History } from 'lucide-react';
@@ -9,11 +9,25 @@ export default function DriverDashboard() {
   const { profile, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState('versement');
+  const [metaPlate, setMetaPlate] = useState('N/A'); // 👇 State yo kubika plate ivuye kuri metadata nyayo
   
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [transactionId, setTransactionId] = useState('');
   const [reason, setReason] = useState('');
+
+  // 🔄 SOMA AMACURU Y'UMUSER DIRECTLY KURI SUPABASE AUTH API NGO TWIZERE METADATA 100%
+  useEffect(() => {
+    async function getFreshMetadata() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.motorcycle_plate) {
+        setMetaPlate(user.user_metadata.motorcycle_plate);
+      } else if (profile?.motorcycle_plate) {
+        setMetaPlate(profile.motorcycle_plate);
+      }
+    }
+    getFreshMetadata();
+  }, [profile]);
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-200 ${darkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
@@ -25,8 +39,11 @@ export default function DriverDashboard() {
               <img src={twaraLogo} alt="TwaraFleet Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">{profile?.full_name || 'Umutari'}</h1>
-              <p className="text-xs text-gray-500 font-mono">PLATE: {profile?.motorcycle_plate || 'N/A'}</p>
+              <h1 className="text-lg font-semibold tracking-tight text-white dark:text-white">{profile?.full_name || 'Umutari'}</h1>
+              {/* 👇 HANO: Irahita yandikaho ya Plate nyayo yaguye muri metaPlate */}
+              <p className="text-xs text-emerald-400 font-mono font-bold tracking-wider uppercase bg-[#003d29]/20 px-2 py-0.5 rounded mt-0.5 inline-block">
+                PLATE: {metaPlate}
+              </p>
             </div>
           </div>
           
@@ -63,7 +80,6 @@ export default function DriverDashboard() {
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
               <input type="text" placeholder="Inimero (Trans ID)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
               
-              {/* Button ihabwa text-white buhamye */}
               <button className="w-full bg-[#003d29] hover:bg-[#00291b] text-white font-bold py-3 rounded-lg transition-colors shadow-sm">Kohereza</button>
             </div>
           )}
