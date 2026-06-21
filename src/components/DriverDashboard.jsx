@@ -9,14 +9,18 @@ export default function DriverDashboard() {
   const { profile, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState('versement');
-  const [metaPlate, setMetaPlate] = useState('N/A'); // 👇 State yo kubika plate ivuye kuri metadata nyayo
+  const [metaPlate, setMetaPlate] = useState('N/A');
   
+  // States za fomu
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [transactionId, setTransactionId] = useState('');
   const [reason, setReason] = useState('');
+  
+  // Status za submission
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState({ type: '', text: '' });
 
-  // 🔄 SOMA AMACURU Y'UMUSER DIRECTLY KURI SUPABASE AUTH API NGO TWIZERE METADATA 100%
   useEffect(() => {
     async function getFreshMetadata() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -29,6 +33,57 @@ export default function DriverDashboard() {
     getFreshMetadata();
   }, [profile]);
 
+  // 💰 FUNCTION YO KOHEREZA VERSEMENT MURI DATABASE
+  const handleSubmitVersement = async (e) => {
+    e.preventDefault();
+    if (!amount || !date) {
+      setMsg({ type: 'error', text: 'Wandika amafaranga n\'itariki byoroshye!' });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setMsg({ type: '', text: '' });
+
+      // 1. SOMA DRIVER REFERENCE IRI MURI PUBLIC.DRIVERS TABLE
+      const { data: driverData, error: driverErr } = await supabase
+        .from('drivers')
+        .eq('auth_user_id', profile.id)
+        .single();
+
+      if (driverErr || !driverData) throw new Error("Umushoferi ntabwo abonetse muri sisitemu.");
+
+      // 2. SOMA MOTORCYCLE_ID IRI MURI DRIVER_ASSIGNMENTS NYAYO ISANZWE IRI ACTIVE
+      const { data: assignData } = await supabase
+        .from('driver_assignments')
+        .eq('driver_id', driverData.id)
+        .eq('is_active', true)
+        .single();
+
+      // 3. INJIZA VERSEMENT MURI DATABASE
+      const { error: insertErr } = await supabase.from('versements').insert([{
+        owner_id: driverData.owner_id, // Komeka kuri Admin we directly
+        driver_id: driverData.id,
+        motorcycle_id: assignData?.motorcycle_id || null, // Niba iharidde iye
+        collection_date: date,
+        amount: parseFloat(amount),
+        payment_method: 'mobile_money',
+        reference_number: transactionId || null,
+        status: 'pending' // Ihita iba pending kugeza Admin ayemeje
+      }]);
+
+      if (insertErr) throw insertErr;
+
+      setMsg({ type: 'success', text: 'Versement yoherejwe neza! Tegereza ko Admin ayemeza. 👍' });
+      setAmount('');
+      setTransactionId('');
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Hari ikosa ryabaye, ongera ugerageze.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className={`min-h-screen font-sans transition-colors duration-200 ${darkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
       
@@ -39,8 +94,9 @@ export default function DriverDashboard() {
               <img src={twaraLogo} alt="TwaraFleet Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-white dark:text-white">{profile?.full_name || 'Umutari'}</h1>
-              {/* 👇 HANO: Irahita yandikaho ya Plate nyayo yaguye muri metaPlate */}
+              <h1 className={`text-lg font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                {profile?.full_name || 'Umutari'}
+              </h1>
               <p className="text-xs text-emerald-400 font-mono font-bold tracking-wider uppercase bg-[#003d29]/20 px-2 py-0.5 rounded mt-0.5 inline-block">
                 PLATE: {metaPlate}
               </p>
@@ -73,22 +129,32 @@ export default function DriverDashboard() {
         </div>
 
         <div className={`p-6 rounded-xl border transition-colors duration-200 ${darkMode ? 'bg-[#1e293b] border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-          {activeTab === 'versement' && (
-            <div className="space-y-4">
-              <h2 className="text-base font-bold">Kohereza Versement</h2>
-              <input type="number" placeholder="Amafaranga (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              <input type="text" placeholder="Inimero (Trans ID)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              
-              <button className="w-full bg-[#003d29] hover:bg-[#00291b] text-white font-bold py-3 rounded-lg transition-colors shadow-sm">Kohereza</button>
+          
+          {/* DYNAMIC ALERT MESSAGES */}
+          {msg.text && (
+            <div className={`p-4 mb-4 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+              {msg.text}
             </div>
+          )}
+
+          {activeTab === 'versement' && (
+            <form onSubmit={handleSubmitVersement} className="space-y-4">
+              <h2 className="text-base font-bold">Kohereza Versement</h2>
+              <input type="number" placeholder="Amafaranga (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+              <input type="text" placeholder="Inimero (Trans ID)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+              
+              <button type="submit" disabled={submitting} className="w-full bg-[#003d29] hover:bg-[#00291b] text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50">
+                {submitting ? 'Iri kohereza...' : 'Kohereza'}
+              </button>
+            </form>
           )}
           
           {activeTab === 'depense' && (
             <div className="space-y-4">
               <h2 className="text-base font-bold">Gushyiramo Depense</h2>
-              <input type="number" placeholder="Amafaranga" onChange={(e) => setAmount(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              <input type="text" placeholder="Impamvu" onChange={(e) => setReason(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+              <input type="number" placeholder="Amafaranga" className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+              <input type="text" placeholder="Impamvu" className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
               <button className="w-full bg-orange-700 hover:bg-orange-800 text-white font-bold py-3 rounded-lg transition-colors">Kohereza Depense</button>
             </div>
           )}
