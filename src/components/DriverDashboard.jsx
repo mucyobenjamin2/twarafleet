@@ -45,20 +45,22 @@ export default function DriverDashboard() {
       setSubmitting(true);
       setMsg({ type: '', text: '' });
 
-      // 1. SOMA DRIVER REFERENCE IRI MURI PUBLIC.DRIVERS TABLE
+      // 1. SOMA DRIVER REFERENCE IRI MURI PUBLIC.DRIVERS TABLE (Twongeyemo .select('*'))
       const { data: driverData, error: driverErr } = await supabase
         .from('drivers')
+        .select('*')
         .eq('auth_user_id', profile.id)
         .single();
 
       if (driverErr || !driverData) throw new Error("Umushoferi ntabwo abonetse muri sisitemu.");
 
-      // 2. SOMA MOTORCYCLE_ID IRI MURI DRIVER_ASSIGNMENTS NYAYO ISANZWE IRI ACTIVE
+      // 2. SOMA MOTORCYCLE_ID IRI MURI DRIVER_ASSIGNMENTS NYAYO ISANZWE IRI ACTIVE (Twongeyemo .select('*'))
       const { data: assignData } = await supabase
         .from('driver_assignments')
+        .select('*')
         .eq('driver_id', driverData.id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle(); // .maybeSingle() irarinda ikosa niba nta moto afite bataramuha
 
       // 3. INJIZA VERSEMENT MURI DATABASE
       const { error: insertErr } = await supabase.from('versements').insert([{
