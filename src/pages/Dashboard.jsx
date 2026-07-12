@@ -15,7 +15,7 @@ function StatTile({ icon: Icon, label, value, sub, tone }) {
   }[tone] ?? 'text-ink-soft bg-paper'
   
   return (
-    <div className="rounded-2xl border border-line bg-paper-raised p-4">
+    <div className="rounded-2xl border border-line glass-panel p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg animate-rise">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">{label}</p>
         <span className={`rounded-lg p-1.5 ${toneClass}`}><Icon size={15} /></span>
@@ -80,16 +80,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="animate-rise">
         <h1 className="font-display text-2xl font-semibold text-ink">Dashboard</h1>
         <p className="text-sm text-ink-soft">Real-time snapshot across your fleet.</p>
       </div>
 
       {/* 🌟 PENDING VERSEMENTS SECTION - BRAND CLEAN LOOK */}
       {pendingVersements.length > 0 && (
-        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
+        <div className="rounded-2xl border border-line glass-panel p-5 shadow-sm animate-rise">
           <div className="flex items-center gap-2 border-b border-line pb-3">
-            <span className="w-2 h-2 rounded-full bg-moto-500"></span>
+            <span className="w-2 h-2 rounded-full bg-moto-500 animate-pulse"></span>
             <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">
               Pending Collections ({pendingVersements.length})
             </h2>
@@ -112,7 +112,7 @@ export default function Dashboard() {
                     REF: {p.reference_number || 'N/A'}
                   </span>
                 </div>
-                <button onClick={() => handleApproveVersement(p.id)} className="flex items-center justify-center gap-1.5 rounded-lg bg-moto-500 hover:bg-moto-600 text-white px-4 py-1.5 text-xs font-medium shadow-sm transition-all">
+                <button onClick={() => handleApproveVersement(p.id)} className="flex items-center justify-center gap-1.5 rounded-lg bg-moto-500 hover:bg-moto-600 text-white px-4 py-1.5 text-xs font-medium shadow-sm transition-all duration-200 hover:scale-[1.03] active:scale-95">
                   <CheckCircle size={14} /> Approve Collection
                 </button>
               </div>
@@ -123,9 +123,9 @@ export default function Dashboard() {
 
       {/* 🌟 PENDING EXPENSES SECTION - BRAND CLEAN LOOK */}
       {pendingExpenses.length > 0 && (
-        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
+        <div className="rounded-2xl border border-line glass-panel p-5 shadow-sm animate-rise">
           <div className="flex items-center gap-2 border-b border-line pb-3">
-            <span className="w-2 h-2 rounded-full bg-rust-500"></span>
+            <span className="w-2 h-2 rounded-full bg-rust-500 animate-pulse"></span>
             <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">
               Pending Expenses ({pendingExpenses.length})
             </h2>
@@ -148,7 +148,7 @@ export default function Dashboard() {
                     {formatRWF(e.amount)}
                   </span>
                 </div>
-                <button onClick={() => handleApproveExpense(e.id)} className="flex items-center justify-center gap-1.5 rounded-lg bg-moto-500 hover:bg-moto-600 text-white px-4 py-1.5 text-xs font-medium shadow-sm transition-all">
+                <button onClick={() => handleApproveExpense(e.id)} className="flex items-center justify-center gap-1.5 rounded-lg bg-moto-500 hover:bg-moto-600 text-white px-4 py-1.5 text-xs font-medium shadow-sm transition-all duration-200 hover:scale-[1.03] active:scale-95">
                   <CheckCircle size={14} /> Approve Expense
                 </button>
               </div>
@@ -164,14 +164,14 @@ export default function Dashboard() {
         <StatTile icon={TrendingUp} tone="cash" label="Fleet size" value={data.fleetCount} sub={data.statusBreakdown.filter(s => s.status !== 'active').map(s => `${s.count} ${s.status}`).join(' · ') || 'All active'} />
       </div>
 
-      <div className="rounded-2xl border border-line bg-paper-raised p-4">
+      <div className="rounded-2xl border border-line glass-panel p-4 animate-rise">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-display text-base font-semibold text-ink">Recent collections</h2>
-            <Link to="/collections" className="flex items-center gap-1 text-sm text-moto-600 hover:underline">View all <ChevronRight size={14} /></Link>
+            <Link to="/collections" className="group flex items-center gap-1 text-sm text-moto-600 hover:underline">View all <ChevronRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" /></Link>
           </div>
           <div className="divide-y divide-line">
               {data.recentVersements?.map(v => (
-                <div key={v.id} className="flex items-center justify-between py-2.5 text-sm">
+                <div key={v.id} className="flex items-center justify-between py-2.5 text-sm rounded-lg transition-colors duration-200 hover:bg-paper/60 px-2">
                   <div className="flex items-center gap-2.5">
                     <span className="plate text-[11px]">{v.motorcycles?.plate_number ?? '—'}</span>
                     <span className="text-ink-soft">{formatDate(v.collection_date)}</span>

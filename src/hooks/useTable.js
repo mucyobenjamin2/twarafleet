@@ -30,14 +30,17 @@ export function useTable(tableName, options = {}) {
   }, [tableName, options.select])
 
   const create = async (values) => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    let payload = { ...values, owner_id: currentUser?.id }
+    // ✅ Bika ID ya Admin hakiri kare cyane mbere y'uko session ihinduka!
+    const { data: { user: adminUser } } = await supabase.auth.getUser()
+    const adminId = adminUser?.id
+    
+    let payload = { ...values, owner_id: adminId }
 
     // 🏎️ IGIHE ADMIN AREMA UMUSHOFERI MUSHYA (NEW DRIVER)
     if (tableName === 'drivers') {
       let finalEmail = values.email?.trim()
       let actualPlateNumber = 'N/A'
-      let selectedMotorcycleId = values.plate_number; // Iyi ni UUID ya moto yatorewe mu fomu
+      let selectedMotorcycleId = values.plate_number; // UUID ya moto yatorewe mu fomu
 
       // 1. Shaka plate_number nyayo muri motorcycles table
       if (selectedMotorcycleId) {
@@ -77,6 +80,7 @@ export function useTable(tableName, options = {}) {
         payload.auth_user_id = authData.user.id
         payload.email = finalEmail
 
+        // Gushyira amakuru muri public.users directly
         const { error: userErr } = await supabase.from('users').insert([{
           auth_user_id: authData.user.id,
           email: finalEmail,
@@ -92,8 +96,10 @@ export function useTable(tableName, options = {}) {
         }
       }
 
-      // ✅ KOSORA HANO: Fata ya plate_number uyisindike muri drivers table mu buryo bwa branding
-      payload.plate_number = actualPlateNumber;
+      // 🚨 KOSORA HANO (THE FIX): Siba plate_number kuri payload kuko ntibaho muri table ya drivers!
+      // Ibi birakumira ririya kosa rya Schema cache bidasubirwaho.
+      delete payload.plate_number;
+      payload.owner_id = adminId;
 
       // 3. Kubika amakuru muri public.drivers
       const { data: insertedDriver, error: err } = await supabase.from('drivers').insert([payload]).select().single()
@@ -102,7 +108,7 @@ export function useTable(tableName, options = {}) {
       // 4. AUTOMATIC ASSIGNMENT: Komeka ya moto kuri uyu mu-driver muri driver_assignments table
       if (insertedDriver && selectedMotorcycleId) {
         await supabase.from('driver_assignments').insert([{
-          owner_id: currentUser?.id,
+          owner_id: adminId, 
           motorcycle_id: selectedMotorcycleId,
           driver_id: insertedDriver.id,
           assigned_date: new Date().toISOString().split('T')[0],

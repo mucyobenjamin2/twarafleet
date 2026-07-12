@@ -1,130 +1,247 @@
-import { useState } from 'react'
-import { Plus } from 'lucide-react'
-import { useTable } from '../hooks/useTable'
-import { useAuth } from '../contexts/AuthContext'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { logActivity, formatRWF, formatDate } from '../lib/format'
-import Modal from '../components/Modal'
-import StatusBadge from '../components/StatusBadge'
-import { LoadingSpinner, EmptyState } from '../components/Feedback'
-import ResourcePage from '../components/ResourcePage'
-import { debtConfig } from '../config/entityConfigs'
-import { AlertTriangle } from 'lucide-react'
+import { formatRWF, formatDate } from '../lib/format'
+import { AlertTriangle, CheckCircle, Trash2, ShieldAlert, TrendingUp, DollarSign } from 'lucide-react'
 
-function PaymentForm({ debt, onClose, onSaved }) {
-  const { profile } = useAuth()
-  const [amount, setAmount] = useState(debt.remaining_amount)
-  const [reference, setReference] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
+export default function Debts() {
+  const [debts, setDebts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('active')
 
-  async function submit(e) {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
-    const { data, error: err } = await supabase.from('debt_payments').insert({
-      debt_id: debt.id,
-      amount_paid: Number(amount),
-      reference_number: reference || null
-    }).select().maybeSingle()
-    if (err) { setError(err.message); setSaving(false); return }
-    await logActivity({ userId: profile?.id, action: 'create', entityType: 'debt_payments', entityId: data?.id, details: { debt_id: debt.id, amount_paid: amount } })
-    setSaving(false)
-    onSaved()
-    onClose()
+  // 📊 States z'imibare (Totals)
+  const [totals, setTotals] = useState({ active: 0, paid: 0, waived: 0 })
+
+  async function loadDebts() {
+    try {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Soma amadeni yose afite isano n'uyu Admin (owner)
+      const { data, error } = await supabase
+        .from('debts')
+        .select('*, motorcycles(plate_number), drivers(full_name)')
+        .eq('owner_id', user.id)
+        .order('debt_date', { ascending: false })
+
+      if (error) throw error
+      setDebts(data || [])
+
+      // Bara igiteranyo cyose (Calculations)
+      let activeSum = 0, paidSum = 0, waivedSum = 0
+      data?.forEach(d => {
+        if (d.status === 'active') activeSum += d.remaining_amount
+        if (d.status === 'paid') paidSum += d.original_amount
+        if (d.status === 'waived') waivedSum += d.original_amount
+      })
+      setTotals({ active: activeSum, paid: paidSum, waived: waivedSum })
+
+    } catch (err) {
+      console.error('Error loading debts ledger:', err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadDebts()
+  }, [])
+
+  // 🛠️ 1. LOGIC YO KUBABARIRA IDENI (WAIVE DEBT)
+  async function handleWaiveDebt(id) {
+    if (!window.confirm('Ese urashaka kubabarira iri deni bidasubirwaho?')) return
+    try {
+      const { error } = await supabase
+        .from('debts')
+        .update({ status: 'waived', remaining_amount: 0 })
+        .eq('id', id)
+      
+      if (error) throw error
+      loadDebts()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // 🛠️ 2. LOGIC YO KUKURAMO IDENI RYISHYUWE (CLEAR/PAY DEBT MANUAL/MATCHING LINK)
+  async function handleClearDebt(debt) {
+    const payAmount = window.prompt(`Injiza amafaranga wishyurwa kuri iri deni (Ideni ryose: ${debt.remaining_amount.toLocaleString()} RWF):`, debt.remaining_amount)
+    if (!payAmount || isNaN(payAmount)) return
+
+    const amount = parseFloat(payAmount)
+    if (amount <= 0) return
+
+    try {
+      const newRemaining = Math.max(0, debt.remaining_amount - amount)
+      const finalStatus = newRemaining === 0 ? 'paid' : 'active'
+
+      // 1. Vugurura table ya debts
+      const { error: debtErr } = await supabase
+        .from('debts')
+        .update({ remaining_amount: newRemaining, status: finalStatus })
+        .eq('id', debt.id)
+
+      if (debtErr) throw debtErr
+
+      // 2. Injiza versement ihita yikubita kuri Dashboard nka Paid automatically kugira ngo ibitabo bihure
+      await supabase.from('versements').insert([{
+        owner_id: debt.owner_id,
+        driver_id: debt.driver_id,
+        motorcycle_id: debt.motorcycle_id,
+        collection_date: debt.debt_date, // Guhuza amatariki neza nka ya matching logic
+        amount: amount,
+        payment_method: 'cash',
+        reference_number: `DEBT-CLEAR-${debt.id.substring(0,6).toUpperCase()}`,
+        status: 'paid',
+        notes: `Versement yizanye mu buryo bwa auto-matching mu gukura ideni ryo ku itariki ya ${debt.debt_date}.`
+      }])
+
+      alert('Ideni ryagabanyijwe kandi versement yashyizwe mu bitabo neza! 👍')
+      loadDebts()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Yungurura amadeni ukoresheje Search query na Status Filter
+  const filteredDebts = debts.filter(d => {
+    const matchesStatus = filterStatus === 'all' || d.status === filterStatus
+    const searchString = `${d.drivers?.full_name || ''} ${d.motorcycles?.plate_number || ''}`.toLowerCase()
+    const matchesSearch = searchString.includes(searchQuery.toLowerCase())
+    return matchesStatus && matchesSearch
+  })
+
+  if (loading) {
+    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gushaka ibitabo by'amadeni...</div>
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="rounded-lg bg-paper px-3 py-2.5 text-sm">
-        <p className="text-ink-soft">Motorcycle <span className="plate ml-1 text-xs">{debt.motorcycles?.plate_number}</span></p>
-        <p className="mt-1 text-ink-soft">Remaining: <span className="font-mono text-ink">{formatRWF(debt.remaining_amount)}</span></p>
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-ink">Amount paid (RWF)</label>
-        <input type="number" required max={debt.remaining_amount} value={amount} onChange={e => setAmount(e.target.value)} className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm font-mono focus:border-moto-500" />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-ink">Reference (optional)</label>
-        <input value={reference} onChange={e => setReference(e.target.value)} className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm focus:border-moto-500" />
-      </div>
-      {error && <p className="text-sm text-rust-500">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-paper">Cancel</button>
-        <button type="submit" disabled={saving} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600 disabled:opacity-60">
-          {saving ? 'Recording…' : 'Record payment'}
-        </button>
-      </div>
-    </form>
-  )
-}
-
-export default function Debts() {
-  const { rows, loading, refresh } = useTable('debts', { select: '*, motorcycles(plate_number), drivers(full_name)', orderBy: { column: 'debt_date', ascending: false }, filters: [{ column: 'status', value: 'active' }] })
-  const [payingDebt, setPayingDebt] = useState(null)
-
-  const totalOutstanding = rows.reduce((sum, d) => sum + Number(d.remaining_amount || 0), 0)
-
-  return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-ink">Debts</h1>
-          <p className="text-sm text-ink-soft">Carried-forward shortfalls from missed or partial collections.</p>
+      <div>
+        <h1 className="font-display text-2xl font-semibold text-ink">Debts Ledger</h1>
+        <p className="text-sm text-ink-soft">Manage active balances and verify automatic deficits.</p>
+      </div>
+
+      {/* 📊 PREMIUM STATS TILES FOR DEBTS */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Total Active Debts</p>
+            <span className="rounded-lg p-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"><AlertTriangle size={16} /></span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-rose-600 dark:text-rose-400">{formatRWF(totals.active)}</p>
+          <p className="mt-0.5 text-xs text-ink-soft">Outstanding money in the field.</p>
         </div>
-        <div className="rounded-xl border border-rust-100 bg-rust-100/40 px-4 py-2 text-right">
-          <p className="text-xs text-rust-600">Total outstanding</p>
-          <p className="font-mono text-lg font-semibold text-rust-600">{formatRWF(totalOutstanding)}</p>
+
+        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Recovered via Versement</p>
+            <span className="rounded-lg p-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"><TrendingUp size={16} /></span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatRWF(totals.paid)}</p>
+          <p className="mt-0.5 text-xs text-ink-soft">Successfully cleared back tax.</p>
+        </div>
+
+        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Total Waived (Amababarirano)</p>
+            <span className="rounded-lg p-1.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"><DollarSign size={16} /></span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-slate-700 dark:text-slate-300">{formatRWF(totals.waived)}</p>
+          <p className="mt-0.5 text-xs text-ink-soft">Debts forgiven manually by owner.</p>
         </div>
       </div>
 
-      {loading ? (
-        <LoadingSpinner />
-      ) : rows.length === 0 ? (
-        <EmptyState icon={AlertTriangle} title="No active debts" message="Every motorcycle is caught up — debts are auto-created when a collection falls short of target." />
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-paper-raised scrollbar-thin">
-          <table className="w-full min-w-max text-left text-sm">
+      {/* 🔍 FILTERS BAR */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-paper p-4 rounded-xl border border-line">
+        <input 
+          type="text" 
+          placeholder="Shakisha umu-driver cyangwa plate..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-72 p-2 rounded-lg border border-line bg-paper-raised text-sm text-ink focus:outline-none"
+        />
+        
+        <div className="flex items-center gap-1.5 border border-line rounded-lg p-1 bg-paper-raised">
+          {['active', 'paid', 'waived', 'all'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors ${filterStatus === status ? 'bg-moto-500 text-white shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 📋 LEDGER TABLE */}
+      <div className="rounded-2xl border border-line bg-paper-raised overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
-                <th className="px-4 py-3 font-medium">Motorcycle</th>
-                <th className="px-4 py-3 font-medium">Driver</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Remaining</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3" />
+              <tr className="border-b border-line bg-paper text-xs font-bold uppercase tracking-wider text-ink-soft">
+                <th className="p-4">Motorcycle</th>
+                <th className="p-4">Driver</th>
+                <th className="p-4">Debt Date</th>
+                <th className="p-4">Deficit / Original</th>
+                <th className="p-4">Remaining</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map(d => (
-                <tr key={d.id} className="border-b border-line last:border-0 hover:bg-paper">
-                  <td className="px-4 py-3"><span className="plate text-xs">{d.motorcycles?.plate_number}</span></td>
-                  <td className="px-4 py-3 text-ink">{d.drivers?.full_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(d.debt_date)}</td>
-                  <td className="px-4 py-3 font-mono text-ink">{formatRWF(d.remaining_amount)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setPayingDebt(d)} className="flex items-center gap-1 rounded-lg bg-moto-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-moto-600">
-                      <Plus size={13} /> Record payment
-                    </button>
-                  </td>
+            <tbody className="divide-y divide-line text-sm text-ink">
+              {filteredDebts.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="p-8 text-center text-ink-soft">Nta madeni ahuye n'ibi bice byabonetse mu bitabo.</td>
                 </tr>
-              ))}
+              ) : (
+                filteredDebts.map((d) => (
+                  <tr key={d.id} className="hover:bg-paper/40 transition-colors">
+                    <td className="p-4">
+                      <span className="plate text-[11px] font-mono">{d.motorcycles?.plate_number || '—'}</span>
+                    </td>
+                    <td className="p-4 font-semibold">{d.drivers?.full_name || 'Unknown Driver'}</td>
+                    <td className="p-4 font-mono text-xs">{formatDate(d.debt_date)}</td>
+                    <td className="p-4 font-mono text-ink-soft">{formatRWF(d.original_amount)}</td>
+                    <td className="p-4 font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {d.remaining_amount > 0 ? formatRWF(d.remaining_amount) : '—'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        d.status === 'active' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' :
+                        d.status === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {d.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right flex justify-end gap-2">
+                      {d.status === 'active' && (
+                        <>
+                          <button 
+                            onClick={() => handleClearDebt(d)}
+                            className="flex items-center gap-1 rounded bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white shadow-sm transition-all"
+                          >
+                            <CheckCircle size={13} /> Pay Debt
+                          </button>
+                          <button 
+                            onClick={() => handleWaiveDebt(d.id)}
+                            className="flex items-center gap-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-gray-200 px-2.5 py-1 text-xs font-medium transition-all"
+                          >
+                            Waive
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-      )}
-
-      <Modal open={!!payingDebt} title="Record debt payment" onClose={() => setPayingDebt(null)}>
-        {payingDebt && <PaymentForm debt={payingDebt} onClose={() => setPayingDebt(null)} onSaved={refresh} />}
-      </Modal>
-
-      <details className="rounded-2xl border border-line bg-paper-raised p-4">
-        <summary className="cursor-pointer font-display text-base font-semibold text-ink">Full debt history (incl. paid &amp; waived)</summary>
-        <div className="mt-4">
-          <ResourcePage config={debtConfig} />
-        </div>
-      </details>
+      </div>
     </div>
   )
 }

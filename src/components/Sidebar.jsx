@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Bike, UserRound, Link2, Wallet, AlertTriangle, Receipt,
-  CalendarOff, PiggyBank, Target, BellRing, ShieldCheck, Landmark, ClipboardCheck,
+  CalendarOff, PiggyBank, BellRing, ShieldCheck, Landmark, ClipboardCheck,
   FolderOpen, History, Settings as SettingsIcon
 } from 'lucide-react'
 
@@ -24,8 +24,7 @@ const GROUPS = [
       { to: '/collections', label: 'Collections', icon: Wallet },
       { to: '/debts', label: 'Debts', icon: AlertTriangle },
       { to: '/expenses', label: 'Expenses', icon: Receipt },
-      { to: '/savings', label: 'Savings Goals', icon: PiggyBank },
-      { to: '/fleet-savings', label: 'Fleet Savings', icon: Target }
+      { to: '/savings', label: 'Savings Goals', icon: PiggyBank } // <-- HUZA INZIRA NEZA N'IYA APP.JSX
     ]
   },
   {
@@ -79,7 +78,6 @@ export default function Sidebar({ onNavigate }) {
                   }`
                 }
               >
-                {/* Icons na Text iyo ziri kuri active zihabwa text-white hano */}
                 <item.icon size={16} />
                 {item.label}
               </NavLink>
