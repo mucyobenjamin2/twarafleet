@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 import twaraLogo from '../assets/logo.png'
 
 export default function Login() {
+  // 🎯 HAKOSOWE HANO: Twakuyeho ikosa rya syntonization ryari ryasigaye
   const { session, loading, signIn } = useAuth()
   const navigate = useNavigate()
   
@@ -56,6 +57,15 @@ export default function Login() {
     setBusy(false)
   }
 
+  const handleForgotAlert = () => {
+    alert(
+      "🎯 KURI DRIVER/USER:\n" +
+      "Hamagara cyangwa wandikire Admin kuri WhatsApp ngo aguhindurire password nshya mu bitabo.\n\n" +
+      "🛠️ KURI ADMIN (Benjamin):\n" +
+      "Injira muri Supabase Dashboard yawe, ujye kuri 'Authentication' -> 'Users', ukande kuri email/phone yawe hanyuma uhitemo 'Reset password' cyangwa 'Change password' ubihhindure n'intoki ako kanya!"
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col lg:flex-row bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <div className="flex flex-1 items-center justify-center px-6 py-12">
@@ -79,19 +89,29 @@ export default function Login() {
                 value={identifier} 
                 onChange={e => setIdentifier(e.target.value)} 
                 className="w-full border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg text-sm bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#003d29] transition-colors" 
-                placeholder="Phone number or Email" 
+                placeholder="Phone number or Email"
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <input 
                 type="password" 
                 required 
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
                 className="w-full border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg text-sm bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#003d29] transition-colors" 
-                placeholder="Password" 
+                placeholder="Password"
               />
+              
+              <div className="flex justify-end">
+                <button 
+                  type="button" 
+                  onClick={handleForgotAlert}
+                  className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-[#003d29] dark:hover:text-emerald-400 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-xs text-red-500 font-medium">{error}</p>}

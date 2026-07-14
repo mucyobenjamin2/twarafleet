@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatRWF, formatDate } from '../lib/format'
-import { Target, Bike, RefreshCw, User, Plus, Calendar, FileText } from 'lucide-react'
+import { Target, Bike, RefreshCw, User, Plus, Calendar } from 'lucide-react'
 
 export default function SavingsGoals() {
   const [loading, setLoading] = useState(true)
   const [motorcycles, setMotorcycles] = useState([])
+  const [rawMotos, setRawMotos] = useState([]) 
   
   // 📊 Core Financial Equation States
   const [globalCollected, setGlobalCollected] = useState(0)
@@ -13,6 +14,7 @@ export default function SavingsGoals() {
   const [globalNetTotal, setGlobalNetTotal] = useState(0)
 
   // 🎯 Active Fleet Goal States
+  const [fleetGoalId, setFleetGoalId] = useState(null)
   const [fleetGoalAmount, setFleetGoalAmount] = useState(0)
   const [fleetGoalTitle, setFleetGoalTitle] = useState('')
   const [fleetGoalDesc, setFleetGoalDesc] = useState('')
@@ -38,6 +40,8 @@ export default function SavingsGoals() {
         .eq('owner_id', user.id)
         .eq('status', 'active')
 
+      setRawMotos(motos || [])
+
       // 2. Soma active driver assignments
       const { data: assignments } = await supabase
         .from('driver_assignments')
@@ -59,26 +63,29 @@ export default function SavingsGoals() {
         .eq('owner_id', user.id)
         .eq('status', 'approved')
 
-      // 5. Soma Fleet Goal hamwe n'ibitabo byayo byose
+      // 5. Soma Fleet Goal hamwe n'ibitabo byayo
       const { data: dbGoals } = await supabase
         .from('savings_goals')
         .select('*')
+        .eq('owner_id', user.id)
         .eq('type', 'fleet_main')
         .maybeSingle()
 
       if (dbGoals) {
+        setFleetGoalId(dbGoals.id)
         setFleetGoalAmount(parseFloat(dbGoals.target_amount) || 0)
-        setFleetGoalTitle(dbGoals.title || dbGoals.name || 'Fleet Savings Milestone')
+        setFleetGoalTitle(dbGoals.goal_name || dbGoals.title || dbGoals.name || 'Fleet Savings Milestone')
         setFleetGoalDesc(dbGoals.description || '')
         setFleetTargetDate(dbGoals.target_date || '')
       } else {
+        setFleetGoalId(null)
         setFleetGoalAmount(0)
         setFleetGoalTitle('')
         setFleetGoalDesc('')
         setFleetTargetDate('')
       }
 
-      // 6. KUBARA RUSANGE (Total Collected - Total Expenses = Net Total)
+      // 6. KUBARA RUSANGE
       const totalCollectedCalc = versements?.reduce((acc, curr) => acc + curr.amount, 0) || 0
       const totalExpensesCalc = expenses?.reduce((acc, curr) => acc + curr.amount, 0) || 0
       const netTotalCalc = totalCollectedCalc - totalExpensesCalc
@@ -87,7 +94,7 @@ export default function SavingsGoals() {
       setGlobalExpenses(totalExpensesCalc)
       setGlobalNetTotal(netTotalCalc)
 
-      // 7. KUBARA IMIBARE YA BURI MOTO (Versements - Expenses)
+      // 7. KUBARA IMIBARE YA BURI MOTO
       const calculatedMotos = motos?.map(moto => {
         const assign = assignments?.find(a => a.motorcycle_id === moto.id)
         const driverName = assign?.drivers?.full_name || 'No Driver Assigned'
@@ -120,7 +127,7 @@ export default function SavingsGoals() {
     loadSavingsGoalsCorePipeline()
   }, [])
 
-  // 🛠️ SUBMIT NEW FLEET GOAL YUZUYE IMYEYO
+  // 🛠️ SUBMIT NEW FLEET GOAL NYAYO
   const handleCreateFleetGoal = async (e) => {
     e.preventDefault()
     if (!titleInput || !goalInput || isNaN(goalInput) || parseFloat(goalInput) <= 0) {
@@ -130,29 +137,41 @@ export default function SavingsGoals() {
 
     try {
       setSubmitting(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Nta mukoresha winjiye mu bitabo.")
+
       const amount = parseFloat(goalInput)
+      const fallbackMotorcycleId = rawMotos[0]?.id || null
+
+      const payload = {
+        type: 'fleet_main',
+        title: titleInput,
+        name: titleInput,
+        goal_name: titleInput,
+        description: descInput,
+        target_amount: amount,
+        target_date: dateInput || null,
+        owner_id: user.id,
+        motorcycle_id: fallbackMotorcycleId
+      }
+
+      if (fleetGoalId) {
+        payload.id = fleetGoalId
+      }
 
       const { error } = await supabase
         .from('savings_goals')
-        .upsert([{ 
-          id: 'fleet-main-id-static', 
-          type: 'fleet_main', 
-          title: titleInput,
-          name: titleInput, // Duhuze zombi ngo hatagira ishikisha
-          description: descInput,
-          target_amount: amount,
-          target_date: dateInput || null
-        }], { onConflict: 'id' })
+        .upsert([payload], { onConflict: 'id' })
 
       if (error) throw error
-      alert('Intego nshya yaguzwe neza mu bitabo! 🎯')
+      alert('Intego yaguzwe neza mu bitabo! 🎯')
       setTitleInput('')
       setDescInput('')
       setGoalInput('')
       setDateInput('')
       await loadSavingsGoalsCorePipeline()
     } catch (err) {
-      alert('Habonetse ikosa: ' + err.message + '\n\nKora ya SQL command niba utarayikora.')
+      alert('Habonetse ikosa: ' + err.message)
     } finally {
       setSubmitting(false)
     }
@@ -162,8 +181,8 @@ export default function SavingsGoals() {
     return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gushaka imibare n'intego z'ubwizingame...</div>
   }
 
-  const goalProgressPercentage = fleetGoalAmount > 0 
-    ? Math.min(100, Math.round((globalNetTotal / fleetGoalAmount) * 100)) 
+  const goalProgressPercentage = fleetGoalAmount > 0
+    ? Math.min(100, Math.round((globalNetTotal / fleetGoalAmount) * 100))
     : 0
 
   return (
@@ -221,7 +240,7 @@ export default function SavingsGoals() {
         </div>
       )}
 
-      {/* ➕ INDIKATOR III: CREATE NEW GOAL (IZINA, DESCRIPTION, ITARIKI, AMOUNT) */}
+      {/* ➕ INDIKATOR III: CREATE NEW GOAL */}
       <div className="rounded-2xl border border-line bg-paper-raised p-5 space-y-4">
         <div className="flex items-center gap-2 border-b border-line pb-2">
           <Plus size={16} className="text-moto-500" />
@@ -235,7 +254,7 @@ export default function SavingsGoals() {
               type="text" 
               placeholder="Umutwe w'intego..." 
               value={titleInput} 
-              onChange={(e) => setTitleInput(e.target.value)} 
+              onChange={(e) => setTitleInput(e.target.value)}
               className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
             />
           </div>
@@ -246,7 +265,7 @@ export default function SavingsGoals() {
               type="text" 
               placeholder="Gusobanura muri make..." 
               value={descInput} 
-              onChange={(e) => setDescInput(e.target.value)} 
+              onChange={(e) => setDescInput(e.target.value)}
               className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
             />
           </div>
@@ -257,7 +276,7 @@ export default function SavingsGoals() {
               type="number" 
               placeholder="Mfano: 5000000" 
               value={goalInput} 
-              onChange={(e) => setGoalInput(e.target.value)} 
+              onChange={(e) => setGoalInput(e.target.value)}
               className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
             />
           </div>
@@ -267,7 +286,7 @@ export default function SavingsGoals() {
             <input 
               type="date" 
               value={dateInput} 
-              onChange={(e) => setDateInput(e.target.value)} 
+              onChange={(e) => setDateInput(e.target.value)}
               className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
             />
           </div>
@@ -275,7 +294,7 @@ export default function SavingsGoals() {
           <div className="lg:col-span-4 flex justify-end mt-2">
             <button 
               type="submit" 
-              disabled={submitting} 
+              disabled={submitting}
               className="bg-moto-500 hover:bg-moto-600 text-white px-6 py-2 rounded-lg text-xs font-bold h-[38px] transition-colors w-full sm:w-auto"
             >
               {submitting ? 'Iri kubika...' : fleetGoalAmount > 0 ? 'Update Active Goal' : 'Save New Goal'}

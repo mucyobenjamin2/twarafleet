@@ -23,19 +23,39 @@ export default function Debts() {
         .from('debts')
         .select('*, motorcycles(plate_number), drivers(full_name)')
         .eq('owner_id', user.id)
-        .order('debt_date', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
-      setDebts(data || [])
+      
+      const loadedDebts = data || []
+      setDebts(loadedDebts)
 
-      // Bara igiteranyo cyose (Calculations)
-      let activeSum = 0, paidSum = 0, waivedSum = 0
-      data?.forEach(d => {
-        if (d.status === 'active') activeSum += d.remaining_amount
-        if (d.status === 'paid') paidSum += d.original_amount
-        if (d.status === 'waived') waivedSum += d.original_amount
+      // 🔥 AUTO-CALCULATION Y'IMIBARE RUSANGE Y'AMADENI:
+      let activeSum = 0
+      let paidSum = 0
+      let waivedSum = 0
+
+      loadedDebts.forEach(d => {
+        const remaining = parseFloat(d.remaining_amount) || 0
+        const original = parseFloat(d.original_amount) || 0
+        
+        // Gufata status tukanayigira lowercase ngo twirinde amakosa y'inyuguti
+        const currentStatus = (d.status || '').toLowerCase().trim()
+
+        if (currentStatus === 'active') {
+          activeSum += remaining
+        } else if (currentStatus === 'paid') {
+          paidSum += original
+        } else if (currentStatus === 'waived') {
+          waivedSum += original
+        }
       })
-      setTotals({ active: activeSum, paid: paidSum, waived: waivedSum })
+
+      setTotals({ 
+        active: activeSum, 
+        paid: paidSum, 
+        waived: waivedSum 
+      })
 
     } catch (err) {
       console.error('Error loading debts ledger:', err.message)
@@ -64,7 +84,7 @@ export default function Debts() {
     }
   }
 
-  // 🛠️ 2. LOGIC YO KUKURAMO IDENI RYISHYUWE (CLEAR/PAY DEBT MANUAL/MATCHING LINK)
+  // 🛠️ 2. LOGIC YO KUKURAMO IDENI RYISHYUWE
   async function handleClearDebt(debt) {
     const payAmount = window.prompt(`Injiza amafaranga wishyurwa kuri iri deni (Ideni ryose: ${debt.remaining_amount.toLocaleString()} RWF):`, debt.remaining_amount)
     if (!payAmount || isNaN(payAmount)) return
@@ -76,7 +96,6 @@ export default function Debts() {
       const newRemaining = Math.max(0, debt.remaining_amount - amount)
       const finalStatus = newRemaining === 0 ? 'paid' : 'active'
 
-      // 1. Vugurura table ya debts
       const { error: debtErr } = await supabase
         .from('debts')
         .update({ remaining_amount: newRemaining, status: finalStatus })
@@ -84,12 +103,11 @@ export default function Debts() {
 
       if (debtErr) throw debtErr
 
-      // 2. Injiza versement ihita yikubita kuri Dashboard nka Paid automatically kugira ngo ibitabo bihure
       await supabase.from('versements').insert([{
         owner_id: debt.owner_id,
         driver_id: debt.driver_id,
         motorcycle_id: debt.motorcycle_id,
-        collection_date: debt.debt_date, // Guhuza amatariki neza nka ya matching logic
+        collection_date: debt.debt_date,
         amount: amount,
         payment_method: 'cash',
         reference_number: `DEBT-CLEAR-${debt.id.substring(0,6).toUpperCase()}`,
@@ -104,11 +122,16 @@ export default function Debts() {
     }
   }
 
-  // Yungurura amadeni ukoresheje Search query na Status Filter
+  // 🔥 FIX NYAYO: Yungurura hano akoresheje lowercase ngo status zose zihure 100%!
   const filteredDebts = debts.filter(d => {
-    const matchesStatus = filterStatus === 'all' || d.status === filterStatus
+    const currentDebtStatus = (d.status || '').toLowerCase().trim()
+    const currentFilterStatus = (filterStatus || '').toLowerCase().trim()
+
+    const matchesStatus = currentFilterStatus === 'all' || currentDebtStatus === currentFilterStatus
+    
     const searchString = `${d.drivers?.full_name || ''} ${d.motorcycles?.plate_number || ''}`.toLowerCase()
     const matchesSearch = searchString.includes(searchQuery.toLowerCase())
+    
     return matchesStatus && matchesSearch
   })
 
@@ -123,7 +146,7 @@ export default function Debts() {
         <p className="text-sm text-ink-soft">Manage active balances and verify automatic deficits.</p>
       </div>
 
-      {/* 📊 PREMIUM STATS TILES FOR DEBTS */}
+      {/* 📊 STATS TILES */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-line bg-paper-raised p-5">
           <div className="flex items-center justify-between">
@@ -168,7 +191,7 @@ export default function Debts() {
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors ${filterStatus === status ? 'bg-moto-500 text-white shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors ${filterStatus.toLowerCase() === status.toLowerCase() ? 'bg-moto-500 text-white shadow-sm' : 'text-ink-soft hover:text-ink'}`}
             >
               {status}
             </button>
@@ -194,7 +217,7 @@ export default function Debts() {
             <tbody className="divide-y divide-line text-sm text-ink">
               {filteredDebts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-ink-soft">Nta madeni ahuye n'ibi bice byabonetse mu bitabo.</td>
+                  <td colSpan="7" className="p-8 text-center text-ink-soft">Nta madeni active cyangwa ayandi ahuye n'iyi filter yabonetse.</td>
                 </tr>
               ) : (
                 filteredDebts.map((d) => (
@@ -210,15 +233,15 @@ export default function Debts() {
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        d.status === 'active' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' :
-                        d.status === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
+                        (d.status || '').toLowerCase() === 'active' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' :
+                        (d.status || '').toLowerCase() === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
                         'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
                       }`}>
                         {d.status}
                       </span>
                     </td>
                     <td className="p-4 text-right flex justify-end gap-2">
-                      {d.status === 'active' && (
+                      {(d.status || '').toLowerCase() === 'active' && (
                         <>
                           <button 
                             onClick={() => handleClearDebt(d)}
