@@ -13,7 +13,7 @@ function getNested(obj, path) {
 
 export default function ResourcePage({ config }) {
   const { rows, loading, error, create, update, remove } = useTable(config.table, { select: config.select })
-  const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row }
+  const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row: null }
   const [pendingDelete, setPendingDelete] = useState(null)
   const [query, setQuery] = useState('')
 
@@ -24,7 +24,7 @@ export default function ResourcePage({ config }) {
   }, [rows, query, config.searchKeys])
 
   async function handleSubmit(values) {
-    if (modal.mode === 'edit') await update(modal.row.id, values)
+    if (modal?.mode === 'edit') await update(modal.row.id, values)
     else await create(values)
     setModal(null)
   }
@@ -53,7 +53,7 @@ export default function ResourcePage({ config }) {
             </div>
           )}
           <button
-            onClick={() => setModal({ mode: 'create' })}
+            onClick={() => setModal({ mode: 'create', row: null })}
             className="flex items-center gap-1.5 rounded-lg bg-moto-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-moto-600 shadow-sm transition-all"
           >
             <Plus size={16} /> Add {config.titleSingular}
@@ -63,7 +63,7 @@ export default function ResourcePage({ config }) {
 
       {error && <p className="rounded-lg bg-rust-100/60 px-3 py-2 text-sm text-rust-600">{error}</p>}
 
-      {/* LIST TABLE OR EMPTY STATE */}
+      {/* TABLE LIST DISPLAY */}
       {loading ? (
         <LoadingSpinner />
       ) : filtered.length === 0 ? (
@@ -71,7 +71,7 @@ export default function ResourcePage({ config }) {
           title={`No ${config.titlePlural.toLowerCase()} yet`}
           message={`Add your first ${config.titleSingular.toLowerCase()} to start tracking it here.`}
           action={
-            <button onClick={() => setModal({ mode: 'create' })} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600">
+            <button onClick={() => setModal({ mode: 'create', row: null })} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600">
               Add {config.titleSingular}
             </button>
           }
@@ -85,12 +85,17 @@ export default function ResourcePage({ config }) {
         />
       )}
 
-      {/* FORM MODAL POPUP */}
-      <Modal open={!!modal} title={modal?.mode === 'edit' ? `Edit ${config.titleSingular}` : `Add ${config.titleSingular}`} onClose={() => setModal(null)} wide>
+      {/* MODAL ALWAYS RENDERS RESOURCEFORM ON TOP */}
+      <Modal 
+        open={Boolean(modal)} 
+        title={modal?.mode === 'edit' ? `Edit ${config.titleSingular}` : `Add ${config.titleSingular}`} 
+        onClose={() => setModal(null)} 
+        wide
+      >
         {modal && (
           <ResourceForm
             config={config}
-            initialValues={modal.row}
+            initialValues={modal.row || {}}
             onSubmit={handleSubmit}
             onCancel={() => setModal(null)}
             submitLabel={modal.mode === 'edit' ? 'Save changes' : 'Add'}
@@ -99,7 +104,7 @@ export default function ResourcePage({ config }) {
       </Modal>
 
       <ConfirmDialog
-        open={!!pendingDelete}
+        open={Boolean(pendingDelete)}
         message={`This will permanently delete this ${config.titleSingular.toLowerCase()} record.`}
         onConfirm={handleDelete}
         onCancel={() => setPendingDelete(null)}
