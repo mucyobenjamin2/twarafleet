@@ -1,5 +1,3 @@
-import { supabase } from '../lib/supabaseClient'
-
 // Declarative config consumed by ResourcePage.jsx so 12 of the 16 feature
 // tables share one generic list+form implementation instead of 12 near-duplicates.
 
@@ -51,23 +49,7 @@ export const driverConfig = {
       label: 'Select Motorcycle Plate', 
       type: 'relation', 
       relation: { table: 'motorcycles', labelKey: 'plate_number' }, 
-      required: true,
-      // 🔥 ISUKU NYAYO: Zana GUSA moto z'uwo Admin winjiye (user.id)
-      optionsLoader: async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return []
-
-        const { data } = await supabase
-          .from('motorcycles')
-          .select('id, plate_number')
-          .eq('owner_id', user.id)
-          .order('plate_number', { ascending: true })
-
-        return (data || []).map(m => ({
-          value: m.id,
-          label: m.plate_number
-        }))
-      }
+      required: true 
     },
     { key: 'national_id', label: 'National ID', type: 'text' },
     { key: 'phone_number', label: 'Phone number', type: 'text' },
