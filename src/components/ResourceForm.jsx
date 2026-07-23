@@ -1,106 +1,153 @@
-import { useMemo, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
-import { useTable } from '../hooks/useTable'
-import DataTable from './DataTable'
-import ResourceForm from './ResourceForm'
-import Modal from './Modal'
-import ConfirmDialog from './ConfirmDialog'
-import { EmptyState, LoadingSpinner } from './Feedback'
+import { useEffect, useState } from 'react'
+import { useLookup } from '../hooks/useLookup'
+import FileUpload from './FileUpload'
 
-function getNested(obj, path) {
-  return path.split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), obj)
+function defaultFor(field) {
+  if (field.default === 'today') return new Date().toISOString().slice(0, 10)
+  if (field.default !== undefined) return field.default
+  if (field.type === 'boolean') return false
+  return ''
 }
 
-export default function ResourcePage({ config }) {
-  const { rows, loading, error, create, update, remove } = useTable(config.table, { select: config.select })
-  const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row }
-  const [pendingDelete, setPendingDelete] = useState(null)
-  const [query, setQuery] = useState('')
+function RelationField({ field, value, onChange }) {
+  const { options, loading } = useLookup(field.relation.table, `id, ${field.relation.labelKey}`)
+  return (
+    <select
+      value={value ?? ''}
+      onChange={e => onChange(e.target.value)}
+      required={field.required}
+      className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
+    >
+      <option value="">{loading ? 'Loading…' : `Select ${field.label.toLowerCase()}`}</option>
+      {options.map(opt => (
+        <option key={opt.id} value={opt.id}>{opt[field.relation.labelKey]}</option>
+      ))}
+    </select>
+  )
+}
 
-  const filtered = useMemo(() => {
-    if (!query || config.searchKeys.length === 0) return rows
-    const q = query.toLowerCase()
-    return rows.filter(row => config.searchKeys.some(key => String(getNested(row, key) ?? '').toLowerCase().includes(q)))
-  }, [rows, query, config.searchKeys])
+export default function ResourceForm({ config, initialValues, onSubmit, onCancel, submitLabel = 'Save' }) {
+  const [values, setValues] = useState(() => {
+    const base = {}
+    config.fields.forEach(f => { base[f.key] = initialValues?.[f.key] ?? defaultFor(f) })
+    return base
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
-  async function handleSubmit(values) {
-    if (modal.mode === 'edit') await update(modal.row.id, values)
-    else await create(values)
-    setModal(null)
+  useEffect(() => {
+    const base = {}
+    config.fields.forEach(f => { base[f.key] = initialValues?.[f.key] ?? defaultFor(f) })
+    setValues(base)
+  }, [initialValues, config])
+
+  function set(key, val) {
+    setValues(v => ({ ...v, [key]: val }))
   }
 
-  async function handleDelete() {
-    await remove(pendingDelete.id)
-    setPendingDelete(null)
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = { ...values }
+      config.fields.forEach(f => {
+        if (f.type === 'number' && payload[f.key] === '') payload[f.key] = null
+        if (f.type === 'date' && payload[f.key] === '') payload[f.key] = null
+        if (f.type === 'relation' && payload[f.key] === '') payload[f.key] = null
+      })
+      await onSubmit(payload)
+    } catch (err) {
+      setError(err.message ?? 'Something went wrong. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-ink">{config.titlePlural}</h1>
-          <p className="text-sm text-ink-soft">{rows.length} total</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {config.searchKeys.length > 0 && (
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
-              <input
-                value={query} onChange={e => setQuery(e.target.value)} placeholder="Search…"
-                className="w-44 rounded-lg border border-line bg-paper-raised py-2 pl-8 pr-3 text-sm focus:border-moto-500 sm:w-56"
-              />
-            </div>
-          )}
-          <button
-            onClick={() => setModal({ mode: 'create' })}
-            className="flex items-center gap-1.5 rounded-lg bg-moto-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-moto-600"
-          >
-            <Plus size={16} /> Add {config.titleSingular}
-          </button>
-        </div>
-      </div>
-
-      {error && <p className="rounded-lg bg-rust-100/60 px-3 py-2 text-sm text-rust-600">{error}</p>}
-
-      {loading ? (
-        <LoadingSpinner />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          title={`No ${config.titlePlural.toLowerCase()} yet`}
-          message={`Add your first ${config.titleSingular.toLowerCase()} to start tracking it here.`}
-          action={
-            <button onClick={() => setModal({ mode: 'create' })} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600">
-              Add {config.titleSingular}
-            </button>
-          }
-        />
-      ) : (
-        <DataTable
-          columns={config.columns}
-          rows={filtered}
-          onEdit={row => setModal({ mode: 'edit', row })}
-          onDelete={row => setPendingDelete(row)}
-        />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {config.helperNote && (
+        <p className="rounded-lg bg-moto-50 px-3 py-2 text-xs text-moto-700">{config.helperNote}</p>
       )}
+      {config.fields.map(field => (
+        <div key={field.key}>
+          <label className="mb-1 block text-sm font-medium text-ink">
+            {field.label}{field.required && <span className="text-rust-500"> *</span>}
+          </label>
 
-      <Modal open={!!modal} title={modal?.mode === 'edit' ? `Edit ${config.titleSingular}` : `Add ${config.titleSingular}`} onClose={() => setModal(null)} wide>
-        {modal && (
-          <ResourceForm
-            config={config}
-            initialValues={modal.row}
-            onSubmit={handleSubmit}
-            onCancel={() => setModal(null)}
-            submitLabel={modal.mode === 'edit' ? 'Save changes' : 'Add'}
-          />
-        )}
-      </Modal>
+          {field.type === 'text' && (
+            <input
+              type="text" required={field.required} value={values[field.key] ?? ''}
+              onChange={e => set(field.key, e.target.value)}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
+            />
+          )}
 
-      <ConfirmDialog
-        open={!!pendingDelete}
-        message={`This will permanently delete this ${config.titleSingular.toLowerCase()} record.`}
-        onConfirm={handleDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
-    </div>
+          {field.type === 'number' && (
+            <input
+              type="number" step="any" required={field.required} value={values[field.key] ?? ''}
+              onChange={e => set(field.key, e.target.value)}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm font-mono text-ink focus:border-moto-500"
+            />
+          )}
+
+          {field.type === 'date' && (
+            <input
+              type="date" required={field.required} value={values[field.key] ?? ''}
+              onChange={e => set(field.key, e.target.value)}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
+            />
+          )}
+
+          {field.type === 'textarea' && (
+            <textarea
+              rows={3} value={values[field.key] ?? ''}
+              onChange={e => set(field.key, e.target.value)}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
+            />
+          )}
+
+          {field.type === 'select' && (
+            <select
+              value={values[field.key] ?? ''} required={field.required}
+              onChange={e => set(field.key, e.target.value)}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm capitalize text-ink focus:border-moto-500"
+            >
+              {field.options.map(opt => <option key={opt} value={opt} className="capitalize">{opt.replace('_', ' ')}</option>)}
+            </select>
+          )}
+
+          {field.type === 'boolean' && (
+            <select
+              value={values[field.key] ? 'true' : 'false'}
+              onChange={e => set(field.key, e.target.value === 'true')}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          )}
+
+          {field.type === 'relation' && (
+            <RelationField field={field} value={values[field.key]} onChange={val => set(field.key, val)} />
+          )}
+
+          {field.type === 'file' && (
+            <FileUpload folder={field.folder ?? 'files'} value={values[field.key]} onChange={url => set(field.key, url)} />
+          )}
+        </div>
+      ))}
+
+      {error && <p className="text-sm text-rust-500">{error}</p>}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-paper">
+          Cancel
+        </button>
+        <button type="submit" disabled={saving} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600 disabled:opacity-60">
+          {saving ? 'Saving…' : submitLabel}
+        </button>
+      </div>
+    </form>
   )
 }
