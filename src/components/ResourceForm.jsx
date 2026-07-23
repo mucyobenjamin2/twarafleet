@@ -8,48 +8,41 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load relation options ONLY when the form component is explicitly rendered inside Modal
   useEffect(() => {
     let isMounted = true
-
-    async function loadRelationOptions() {
+    async function loadOptions() {
       const relationFields = config.fields.filter(f => f.type === 'relation' && f.relation)
       if (relationFields.length === 0) return
 
-      try {
-        setLoadingOptions(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+      setLoadingOptions(true)
+      const optionsMap = {}
 
-        const optionsMap = {}
-
-        for (const field of relationFields) {
-          // 🔥 ISUKU NYAYO: Fetch strictly options belonging to currently logged-in Admin
-          let query = supabase
+      for (const field of relationFields) {
+        // Niba ifite custom optionsLoader muri config, nk'uko tuyishyira muri driverConfig
+        if (field.optionsLoader) {
+          const loaded = await field.optionsLoader()
+          if (isMounted) optionsMap[field.key] = loaded
+        } else {
+          // Relational lookup isanzwe
+          const { data } = await supabase
             .from(field.relation.table)
             .select(`id, ${field.relation.labelKey}`)
-            .eq('owner_id', user.id)
-
-          const { data, error: fetchErr } = await query
-
-          if (!fetchErr && data && isMounted) {
+          if (data && isMounted) {
             optionsMap[field.key] = data.map(item => ({
               value: item.id,
-              label: item[field.relation.labelKey] || item.id
+              label: item[field.relation.labelKey]
             }))
           }
         }
+      }
 
-        if (isMounted) setRelationOptions(optionsMap)
-      } catch (err) {
-        console.error('Error loading relation options:', err.message)
-      } finally {
-        if (isMounted) setLoadingOptions(false)
+      if (isMounted) {
+        setRelationOptions(optionsMap)
+        setLoadingOptions(false)
       }
     }
 
-    loadRelationOptions()
-
+    loadOptions()
     return () => { isMounted = false }
   }, [config])
 
@@ -64,14 +57,14 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
       setError(null)
       await onSubmit(formData)
     } catch (err) {
-      setError(err.message || 'An error occurred while saving.')
+      setError(err.message || 'Error occurred while saving.')
     } finally {
       setSubmitting(false)
     }
   }
 
   if (loadingOptions) {
-    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gukurura urutonde...</div>
+    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Loading form options…</div>
   }
 
   return (
@@ -92,7 +85,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
                 {field.label} {field.required && <span className="text-rose-500">*</span>}
               </label>
 
-              {/* SELECT FIELD */}
               {field.type === 'select' && (
                 <select
                   value={value}
@@ -109,7 +101,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
                 </select>
               )}
 
-              {/* RELATION FIELD */}
               {field.type === 'relation' && (
                 <select
                   value={value}
@@ -126,7 +117,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
                 </select>
               )}
 
-              {/* TEXTAREA FIELD */}
               {field.type === 'textarea' && (
                 <textarea
                   rows={3}
@@ -137,7 +127,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
                 />
               )}
 
-              {/* BOOLEAN FIELD */}
               {field.type === 'boolean' && (
                 <div className="flex items-center gap-2 pt-2">
                   <input
@@ -150,7 +139,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
                 </div>
               )}
 
-              {/* DEFAULT INPUT TYPES (TEXT, NUMBER, DATE, EMAIL, PASSWORD, FILE) */}
               {!['select', 'relation', 'textarea', 'boolean'].includes(field.type) && (
                 <input
                   type={field.type || 'text'}
@@ -165,7 +153,6 @@ export default function ResourceForm({ config, initialValues, onSubmit, onCancel
         })}
       </div>
 
-      {/* ACTION BUTTONS */}
       <div className="flex items-center justify-end gap-3 border-t border-line pt-4 mt-6">
         <button
           type="button"
