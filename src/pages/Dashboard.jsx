@@ -5,13 +5,13 @@ import {
   AlertTriangle, 
   Bike, 
   TrendingUp, 
-  ChevronRight, 
   CheckCircle, 
   Clock, 
   Target, 
   Wrench, 
   CalendarOff, 
-  History 
+  History,
+  XCircle
 } from 'lucide-react'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { LoadingSpinner } from '../components/Feedback'
@@ -56,8 +56,7 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // 1. Pending Collections z'uyu Admin gusa (aho collection_date cyangwa owner_id bishobora kuba biri)
-      // Turinda ko twasoma iz'abandi ba Admin
+      // 1. Pending My Collections
       const { data: v } = await supabase
         .from('versements')
         .select('*, motorcycles(plate_number, owner_id), drivers(full_name)')
@@ -66,7 +65,7 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
       if (v) setPendingVersements(v)
 
-      // 2. Pending Expenses z'abamotari bo kuri moto zawe gusa!
+      // 2. Pending My Expenses
       const { data: myMotos } = await supabase
         .from('motorcycles')
         .select('id, owner_id')
@@ -124,7 +123,7 @@ export default function Dashboard() {
     loadPendingAndExtraData()
   }, [])
 
-  // 🔥 FIX I: Kwemeza Versement tukayandikamo na owner_id y'Admin winjiye
+  // ✅ ACTION 1: KWEMEZA VERSEMENT (APPROVE)
   async function handleApproveVersement(id) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -132,10 +131,7 @@ export default function Dashboard() {
 
       const { error } = await supabase
         .from('versements')
-        .update({ 
-          status: 'paid',
-          owner_id: user.id // Gushyiramo owner_id bidasubirwaho ngo trigger ikore neza!
-        })
+        .update({ status: 'paid', owner_id: user.id })
         .eq('id', id);
 
       if (error) throw error;
@@ -146,7 +142,26 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 FIX II: Kwemeza Expense tukayandikamo na owner_id y'Admin winjiye
+  // ❌ ACTION 2: KWANGA VERSEMENT (REJECT COLLECTION - UTABONYE AMAFARANGA)
+  async function handleRejectVersement(id) {
+    if (!window.confirm('Ese urashaka kwanga (Reject) iyi versement? Ibi birahita byandika ideni ku mu-driver!')) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { error } = await supabase
+        .from('versements')
+        .update({ status: 'rejected', owner_id: user.id })
+        .eq('id', id);
+
+      if (error) throw error;
+      setPendingVersements(prev => prev.filter(item => item.id !== id))
+      window.location.reload()
+    } catch (err) {
+      console.error(err.message)
+    }
+  }
+
   async function handleApproveExpense(id) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -154,10 +169,7 @@ export default function Dashboard() {
 
       const { error } = await supabase
         .from('expenses')
-        .update({ 
-          status: 'approved',
-          owner_id: user.id // Gushyiramo owner_id bidasubirwaho ngo igende kuri Expenses Page!
-        })
+        .update({ status: 'approved', owner_id: user.id })
         .eq('id', id);
 
       if (error) throw error;
@@ -201,13 +213,13 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 🌟 MY PENDING VERSEMENTS */}
+      {/* 🌟 MY PENDING VERSEMENTS (WITH APPROVE & REJECT ACTIONS) */}
       {pendingVersements.length > 0 && (
         <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
           <div className="flex items-center gap-2 border-b border-line pb-3">
             <span className="w-2 h-2 rounded-full bg-moto-500"></span>
             <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">
-              Pending My Collections ({pendingVersements.length})
+              Pending Collections Verification ({pendingVersements.length})
             </h2>
           </div>
           
@@ -228,9 +240,22 @@ export default function Dashboard() {
                     REF: {p.reference_number || 'N/A'}
                   </span>
                 </div>
-                <button onClick={() => handleApproveVersement(p.id)} className="flex items-center justify-center gap-1.5 rounded-lg bg-moto-500 hover:bg-moto-600 text-white px-4 py-1.5 text-xs font-medium shadow-sm transition-all">
-                  <CheckCircle size={14} /> Approve Collection
-                </button>
+
+                {/* UTUBUTO TWA APPROVE NA REJECT */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleApproveVersement(p.id)} 
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-all"
+                  >
+                    <CheckCircle size={14} /> Approve Payment
+                  </button>
+                  <button 
+                    onClick={() => handleRejectVersement(p.id)} 
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-all"
+                  >
+                    <XCircle size={14} /> Reject
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -243,7 +268,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 border-b border-line pb-3">
             <span className="w-2 h-2 rounded-full bg-rust-500"></span>
             <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">
-              Pending My Expenses ({pendingExpenses.length})
+              Pending Expenses ({pendingExpenses.length})
             </h2>
           </div>
           
