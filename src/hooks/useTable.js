@@ -10,19 +10,22 @@ export function useTable(tableName, options = {}) {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setRows([])
+        return
+      }
 
       let query = supabase.from(tableName).select(options.select || '*')
       
-      // ✅ KURAHO FILTERS KURI EXPENSES NA VERSEMENTS Z'ABASHOFERI
-      if (tableName !== 'expenses' && tableName !== 'versements') {
-        query = query.eq('owner_id', user.id)
-      }
+      // 🔥 FIX NYAYO: Filter BURI TABLE YOSE (harimo versements & expenses) 
+      // ikoresheje owner_id ya Admin winjiye neza!
+      query = query.eq('owner_id', user.id)
 
       const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
       setRows(data || [])
     } catch (err) {
+      console.error(`Error fetching table ${tableName}:`, err.message)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -30,7 +33,7 @@ export function useTable(tableName, options = {}) {
   }, [tableName, options.select])
 
   const create = async (values) => {
-    // ✅ Bika ID ya Admin hakiri kare cyane mbere y'uko session ihinduka!
+    // ✅ Bika ID ya Admin hakiri kare mbere y'uko session ihinduka!
     const { data: { user: adminUser } } = await supabase.auth.getUser()
     const adminId = adminUser?.id
     
@@ -42,12 +45,13 @@ export function useTable(tableName, options = {}) {
       let actualPlateNumber = 'N/A'
       let selectedMotorcycleId = values.plate_number; // UUID ya moto yatorewe mu fomu
 
-      // 1. Shaka plate_number nyayo muri motorcycles table
+      // 1. Shaka plate_number nyayo muri motorcycles table ya uyu Admin
       if (selectedMotorcycleId) {
         const { data: motoData } = await supabase
           .from('motorcycles')
           .select('plate_number')
           .eq('id', selectedMotorcycleId)
+          .eq('owner_id', adminId)
           .single()
         
         if (motoData?.plate_number) {
@@ -96,8 +100,7 @@ export function useTable(tableName, options = {}) {
         }
       }
 
-      // 🚨 KOSORA HANO (THE FIX): Siba plate_number kuri payload kuko ntibaho muri table ya drivers!
-      // Ibi birakumira ririya kosa rya Schema cache bidasubirwaho.
+      // Siba plate_number kuri payload kuko idahari muri schema ya drivers table
       delete payload.plate_number;
       payload.owner_id = adminId;
 
@@ -116,25 +119,25 @@ export function useTable(tableName, options = {}) {
         }])
       }
       
-      load()
+      await load()
       return;
     }
 
     const { error: err } = await supabase.from(tableName).insert([payload])
     if (err) throw err
-    load()
+    await load()
   }
 
   const update = async (id, values) => {
     const { error: err } = await supabase.from(tableName).update(values).eq('id', id)
     if (err) throw err
-    load()
+    await load()
   }
 
   const remove = async (id) => {
     const { error: err } = await supabase.from(tableName).delete().eq('id', id)
     if (err) throw err
-    load()
+    await load()
   }
 
   useEffect(() => { load() }, [load])
