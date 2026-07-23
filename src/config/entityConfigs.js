@@ -48,7 +48,11 @@ export const driverConfig = {
       key: 'plate_number', 
       label: 'Select Motorcycle Plate', 
       type: 'relation', 
-      relation: { table: 'motorcycles', labelKey: 'plate_number' }, 
+      relation: { 
+        table: 'motorcycles', 
+        labelKey: 'plate_number',
+        filterByOwner: true // 🔥 Zana GUSA moto za Admin winjiye
+      }, 
       required: true 
     },
     { key: 'national_id', label: 'National ID', type: 'text' },
@@ -76,8 +80,8 @@ export const assignmentConfig = {
     { key: 'is_active', label: 'Active', boolean: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
-    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
+    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name', filterByOwner: true }, required: true },
     { key: 'assigned_date', label: 'Assigned date', type: 'date', default: 'today' },
     { key: 'end_date', label: 'End date', type: 'date' },
     { key: 'is_active', label: 'Currently active', type: 'boolean', default: true }
@@ -99,7 +103,7 @@ export const expenseConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'category', label: 'Category', type: 'select', options: ['fuel', 'repair', 'maintenance', 'insurance', 'tax', 'fine', 'service', 'parking', 'spare_parts', 'other'], default: 'fuel' },
     { key: 'expense_date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
@@ -121,7 +125,7 @@ export const nonWorkingDayConfig = {
     { key: 'reason', label: 'Reason', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'other'], default: 'other' },
     { key: 'description', label: 'Description', type: 'textarea' }
@@ -143,7 +147,7 @@ export const savingsGoalConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'goal_name', label: 'Goal name', type: 'text', required: true },
     { key: 'target_amount', label: 'Target amount (RWF)', type: 'number', required: true },
     { key: 'current_amount', label: 'Current amount (RWF)', type: 'number', default: 0 },
@@ -190,7 +194,7 @@ export const reminderConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle (optional)', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' } },
+    { key: 'motorcycle_id', label: 'Motorcycle (optional)', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true } },
     { key: 'type', label: 'Type', type: 'select', options: ['insurance', 'tax', 'inspection', 'contravention', 'maintenance', 'custom'], default: 'custom' },
     { key: 'title', label: 'Title', type: 'text', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
@@ -215,7 +219,7 @@ export const insuranceConfig = {
     { key: 'expiry_date', label: 'Expires', date: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'insurance_company', label: 'Insurance company', type: 'text' },
     { key: 'policy_number', label: 'Policy number', type: 'text' },
     { key: 'start_date', label: 'Start date', type: 'date' },
@@ -237,7 +241,7 @@ export const taxConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'tax_amount', label: 'Tax amount (RWF)', type: 'number' },
     { key: 'payment_date', label: 'Payment date', type: 'date' },
     { key: 'due_date', label: 'Due date', type: 'date', required: true },
@@ -258,7 +262,7 @@ export const inspectionConfig = {
     { key: 'next_due_date', label: 'Next due', date: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'inspection_date', label: 'Inspection date', type: 'date', default: 'today', required: true },
     { key: 'next_due_date', label: 'Next due date', type: 'date' },
     { key: 'certificate_url', label: 'Certificate', type: 'file', folder: 'inspections' },
@@ -280,8 +284,8 @@ export const versementConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
-    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name' } },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
+    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name', filterByOwner: true } },
     { key: 'collection_date', label: 'Collection date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'mobile_money' },
@@ -307,8 +311,8 @@ export const debtConfig = {
     { key: 'status', label: 'Status', badge: true }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
-    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name' } },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
+    { key: 'driver_id', label: 'Driver', type: 'relation', relation: { table: 'drivers', labelKey: 'full_name', filterByOwner: true } },
     { key: 'debt_date', label: 'Debt date', type: 'date', default: 'today', required: true },
     { key: 'original_amount', label: 'Original amount (RWF)', type: 'number', required: true },
     { key: 'remaining_amount', label: 'Remaining amount (RWF)', type: 'number', required: true },
@@ -329,7 +333,7 @@ export const documentConfig = {
     { key: 'file_name', label: 'File' }
   ],
   fields: [
-    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
+    { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number', filterByOwner: true }, required: true },
     { key: 'document_type', label: 'Document type', type: 'select', options: ['insurance', 'tax', 'inspection', 'registration', 'ownership', 'other'], default: 'other' },
     { key: 'file_name', label: 'File name', type: 'text', required: true },
     { key: 'file_url', label: 'File', type: 'file', folder: 'documents', required: true }
