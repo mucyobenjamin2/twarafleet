@@ -1,151 +1,186 @@
-import { useEffect, useState } from 'react'
-import { useLookup } from '../hooks/useLookup'
-import FileUpload from './FileUpload'
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
-function defaultFor(field) {
-  if (field.default === 'today') return new Date().toISOString().slice(0, 10)
-  if (field.default !== undefined) return field.default
-  if (field.type === 'boolean') return false
-  return ''
-}
-
-function RelationField({ field, value, onChange }) {
-  const { options, loading } = useLookup(field.relation.table, `id, ${field.relation.labelKey}`)
-  return (
-    <select
-      value={value ?? ''}
-      onChange={e => onChange(e.target.value)}
-      required={field.required}
-      className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
-    >
-      <option value="">{loading ? 'Loading…' : `Select ${field.label.toLowerCase()}`}</option>
-      {options.map(opt => (
-        <option key={opt.id} value={opt.id}>{opt[field.relation.labelKey]}</option>
-      ))}
-    </select>
-  )
-}
-
-export default function ResourceForm({ config, initialValues, onSubmit, onCancel, submitLabel = 'Save' }) {
-  const [values, setValues] = useState(() => {
-    const base = {}
-    config.fields.forEach(f => { base[f.key] = initialValues?.[f.key] ?? defaultFor(f) })
-    return base
-  })
-  const [saving, setSaving] = useState(false)
+export default function ResourceForm({ config, initialValues, onSubmit, onCancel, submitLabel }) {
+  const [formData, setFormData] = useState(initialValues || {})
+  const [relationOptions, setRelationOptions] = useState({})
+  const [loadingOptions, setLoadingOptions] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
+  // Load relation options ONLY when the form component is explicitly rendered inside Modal
   useEffect(() => {
-    const base = {}
-    config.fields.forEach(f => { base[f.key] = initialValues?.[f.key] ?? defaultFor(f) })
-    setValues(base)
-  }, [initialValues, config])
+    let isMounted = true
 
-  function set(key, val) {
-    setValues(v => ({ ...v, [key]: val }))
+    async function loadRelationOptions() {
+      const relationFields = config.fields.filter(f => f.type === 'relation' && f.relation)
+      if (relationFields.length === 0) return
+
+      try {
+        setLoadingOptions(true)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const optionsMap = {}
+
+        for (const field of relationFields) {
+          // 🔥 ISUKU NYAYO: Fetch strictly options belonging to currently logged-in Admin
+          let query = supabase
+            .from(field.relation.table)
+            .select(`id, ${field.relation.labelKey}`)
+            .eq('owner_id', user.id)
+
+          const { data, error: fetchErr } = await query
+
+          if (!fetchErr && data && isMounted) {
+            optionsMap[field.key] = data.map(item => ({
+              value: item.id,
+              label: item[field.relation.labelKey] || item.id
+            }))
+          }
+        }
+
+        if (isMounted) setRelationOptions(optionsMap)
+      } catch (err) {
+        console.error('Error loading relation options:', err.message)
+      } finally {
+        if (isMounted) setLoadingOptions(false)
+      }
+    }
+
+    loadRelationOptions()
+
+    return () => { isMounted = false }
+  }, [config])
+
+  function handleChange(key, value) {
+    setFormData(prev => ({ ...prev, [key]: value }))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setSaving(true)
-    setError(null)
     try {
-      const payload = { ...values }
-      config.fields.forEach(f => {
-        if (f.type === 'number' && payload[f.key] === '') payload[f.key] = null
-        if (f.type === 'date' && payload[f.key] === '') payload[f.key] = null
-        if (f.type === 'relation' && payload[f.key] === '') payload[f.key] = null
-      })
-      await onSubmit(payload)
+      setSubmitting(true)
+      setError(null)
+      await onSubmit(formData)
     } catch (err) {
-      setError(err.message ?? 'Something went wrong. Please try again.')
+      setError(err.message || 'An error occurred while saving.')
     } finally {
-      setSaving(false)
+      setSubmitting(false)
     }
+  }
+
+  if (loadingOptions) {
+    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gukurura urutonde...</div>
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {config.helperNote && (
-        <p className="rounded-lg bg-moto-50 px-3 py-2 text-xs text-moto-700">{config.helperNote}</p>
-      )}
-      {config.fields.map(field => (
-        <div key={field.key}>
-          <label className="mb-1 block text-sm font-medium text-ink">
-            {field.label}{field.required && <span className="text-rust-500"> *</span>}
-          </label>
-
-          {field.type === 'text' && (
-            <input
-              type="text" required={field.required} value={values[field.key] ?? ''}
-              onChange={e => set(field.key, e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
-            />
-          )}
-
-          {field.type === 'number' && (
-            <input
-              type="number" step="any" required={field.required} value={values[field.key] ?? ''}
-              onChange={e => set(field.key, e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm font-mono text-ink focus:border-moto-500"
-            />
-          )}
-
-          {field.type === 'date' && (
-            <input
-              type="date" required={field.required} value={values[field.key] ?? ''}
-              onChange={e => set(field.key, e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
-            />
-          )}
-
-          {field.type === 'textarea' && (
-            <textarea
-              rows={3} value={values[field.key] ?? ''}
-              onChange={e => set(field.key, e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
-            />
-          )}
-
-          {field.type === 'select' && (
-            <select
-              value={values[field.key] ?? ''} required={field.required}
-              onChange={e => set(field.key, e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm capitalize text-ink focus:border-moto-500"
-            >
-              {field.options.map(opt => <option key={opt} value={opt} className="capitalize">{opt.replace('_', ' ')}</option>)}
-            </select>
-          )}
-
-          {field.type === 'boolean' && (
-            <select
-              value={values[field.key] ? 'true' : 'false'}
-              onChange={e => set(field.key, e.target.value === 'true')}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
-            >
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          )}
-
-          {field.type === 'relation' && (
-            <RelationField field={field} value={values[field.key]} onChange={val => set(field.key, val)} />
-          )}
-
-          {field.type === 'file' && (
-            <FileUpload folder={field.folder ?? 'files'} value={values[field.key]} onChange={url => set(field.key, url)} />
-          )}
+      {error && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 text-xs font-semibold">
+          {error}
         </div>
-      ))}
+      )}
 
-      {error && <p className="text-sm text-rust-500">{error}</p>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {config.fields.map(field => {
+          const value = formData[field.key] ?? field.default ?? ''
 
-      <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-paper">
+          return (
+            <div key={field.key} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
+                {field.label} {field.required && <span className="text-rose-500">*</span>}
+              </label>
+
+              {/* SELECT FIELD */}
+              {field.type === 'select' && (
+                <select
+                  value={value}
+                  required={field.required}
+                  onChange={e => handleChange(field.key, e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
+                >
+                  <option value="">-- Select {field.label} --</option>
+                  {field.options?.map(opt => (
+                    <option key={opt} value={opt}>
+                      {opt.replace('_', ' ').toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* RELATION FIELD */}
+              {field.type === 'relation' && (
+                <select
+                  value={value}
+                  required={field.required}
+                  onChange={e => handleChange(field.key, e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
+                >
+                  <option value="">-- Select {field.label} --</option>
+                  {(relationOptions[field.key] || []).map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* TEXTAREA FIELD */}
+              {field.type === 'textarea' && (
+                <textarea
+                  rows={3}
+                  value={value}
+                  required={field.required}
+                  onChange={e => handleChange(field.key, e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
+                />
+              )}
+
+              {/* BOOLEAN FIELD */}
+              {field.type === 'boolean' && (
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="checkbox"
+                    checked={!!formData[field.key]}
+                    onChange={e => handleChange(field.key, e.target.checked)}
+                    className="w-4 h-4 rounded text-moto-600 focus:ring-moto-500 border-line"
+                  />
+                  <span className="text-sm font-medium text-ink">{field.label}</span>
+                </div>
+              )}
+
+              {/* DEFAULT INPUT TYPES (TEXT, NUMBER, DATE, EMAIL, PASSWORD, FILE) */}
+              {!['select', 'relation', 'textarea', 'boolean'].includes(field.type) && (
+                <input
+                  type={field.type || 'text'}
+                  value={field.type === 'file' ? undefined : value}
+                  required={field.required}
+                  onChange={e => handleChange(field.key, e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ACTION BUTTONS */}
+      <div className="flex items-center justify-end gap-3 border-t border-line pt-4 mt-6">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className="rounded-xl border border-line bg-paper px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
+        >
           Cancel
         </button>
-        <button type="submit" disabled={saving} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600 disabled:opacity-60">
-          {saving ? 'Saving…' : submitLabel}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-xl bg-moto-500 px-5 py-2 text-sm font-semibold text-white hover:bg-moto-600 transition-colors shadow-sm disabled:opacity-50"
+        >
+          {submitting ? 'Saving…' : (submitLabel || 'Save')}
         </button>
       </div>
     </form>
