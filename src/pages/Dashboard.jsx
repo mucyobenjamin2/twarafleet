@@ -123,7 +123,7 @@ export default function Dashboard() {
     loadPendingAndExtraData()
   }, [])
 
-  // ✅ ACTION 1: KWEMEZA VERSEMENT (APPROVE)
+  // ✅ ACTION 1: APPROVE VERSEMENT
   async function handleApproveVersement(id) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -142,9 +142,9 @@ export default function Dashboard() {
     }
   }
 
-  // ❌ ACTION 2: KWANGA VERSEMENT (REJECT COLLECTION - UTABONYE AMAFARANGA)
+  // ❌ ACTION 2: REJECT VERSEMENT (IKORA DEBT UTABONYE AMAFARANGA)
   async function handleRejectVersement(id) {
-    if (!window.confirm('Ese urashaka kwanga (Reject) iyi versement? Ibi birahita byandika ideni ku mu-driver!')) return
+    if (!window.confirm('Ese urashaka kwanga (Reject) iyi versement? Ibi birahita byandika ideni ry\'uwo munsi ku mu-driver!')) return
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -213,7 +213,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 🌟 MY PENDING VERSEMENTS (WITH APPROVE & REJECT ACTIONS) */}
+      {/* 🌟 MY PENDING VERSEMENTS WITH REJECT OPTION */}
       {pendingVersements.length > 0 && (
         <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
           <div className="flex items-center gap-2 border-b border-line pb-3">
@@ -241,17 +241,17 @@ export default function Dashboard() {
                   </span>
                 </div>
 
-                {/* UTUBUTO TWA APPROVE NA REJECT */}
+                {/* 🌟 UTUBUTO TWBIRI: APPROVE & REJECT */}
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleApproveVersement(p.id)} 
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-all"
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-medium shadow-sm transition-all"
                   >
                     <CheckCircle size={14} /> Approve Payment
                   </button>
                   <button 
                     onClick={() => handleRejectVersement(p.id)} 
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-all"
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 text-xs font-medium shadow-sm transition-all"
                   >
                     <XCircle size={14} /> Reject
                   </button>
