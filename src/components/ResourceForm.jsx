@@ -1,175 +1,106 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { useMemo, useState } from 'react'
+import { Plus, Search } from 'lucide-react'
+import { useTable } from '../hooks/useTable'
+import DataTable from './DataTable'
+import ResourceForm from './ResourceForm'
+import Modal from './Modal'
+import ConfirmDialog from './ConfirmDialog'
+import { EmptyState, LoadingSpinner } from './Feedback'
 
-export default function ResourceForm({ config, initialValues, onSubmit, onCancel, submitLabel }) {
-  const [formData, setFormData] = useState(initialValues || {})
-  const [relationOptions, setRelationOptions] = useState({})
-  const [loadingOptions, setLoadingOptions] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState(null)
+function getNested(obj, path) {
+  return path.split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), obj)
+}
 
-  useEffect(() => {
-    let isMounted = true
-    async function loadOptions() {
-      const relationFields = config.fields.filter(f => f.type === 'relation' && f.relation)
-      if (relationFields.length === 0) return
+export default function ResourcePage({ config }) {
+  const { rows, loading, error, create, update, remove } = useTable(config.table, { select: config.select })
+  const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row }
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [query, setQuery] = useState('')
 
-      setLoadingOptions(true)
-      const optionsMap = {}
+  const filtered = useMemo(() => {
+    if (!query || config.searchKeys.length === 0) return rows
+    const q = query.toLowerCase()
+    return rows.filter(row => config.searchKeys.some(key => String(getNested(row, key) ?? '').toLowerCase().includes(q)))
+  }, [rows, query, config.searchKeys])
 
-      for (const field of relationFields) {
-        // Niba ifite custom optionsLoader muri config, nk'uko tuyishyira muri driverConfig
-        if (field.optionsLoader) {
-          const loaded = await field.optionsLoader()
-          if (isMounted) optionsMap[field.key] = loaded
-        } else {
-          // Relational lookup isanzwe
-          const { data } = await supabase
-            .from(field.relation.table)
-            .select(`id, ${field.relation.labelKey}`)
-          if (data && isMounted) {
-            optionsMap[field.key] = data.map(item => ({
-              value: item.id,
-              label: item[field.relation.labelKey]
-            }))
-          }
-        }
-      }
-
-      if (isMounted) {
-        setRelationOptions(optionsMap)
-        setLoadingOptions(false)
-      }
-    }
-
-    loadOptions()
-    return () => { isMounted = false }
-  }, [config])
-
-  function handleChange(key, value) {
-    setFormData(prev => ({ ...prev, [key]: value }))
+  async function handleSubmit(values) {
+    if (modal.mode === 'edit') await update(modal.row.id, values)
+    else await create(values)
+    setModal(null)
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    try {
-      setSubmitting(true)
-      setError(null)
-      await onSubmit(formData)
-    } catch (err) {
-      setError(err.message || 'Error occurred while saving.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (loadingOptions) {
-    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Loading form options…</div>
+  async function handleDelete() {
+    await remove(pendingDelete.id)
+    setPendingDelete(null)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 text-xs font-semibold">
-          {error}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-ink">{config.titlePlural}</h1>
+          <p className="text-sm text-ink-soft">{rows.length} total</p>
         </div>
+        <div className="flex items-center gap-2">
+          {config.searchKeys.length > 0 && (
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+              <input
+                value={query} onChange={e => setQuery(e.target.value)} placeholder="Search…"
+                className="w-44 rounded-lg border border-line bg-paper-raised py-2 pl-8 pr-3 text-sm focus:border-moto-500 sm:w-56"
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setModal({ mode: 'create' })}
+            className="flex items-center gap-1.5 rounded-lg bg-moto-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-moto-600"
+          >
+            <Plus size={16} /> Add {config.titleSingular}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="rounded-lg bg-rust-100/60 px-3 py-2 text-sm text-rust-600">{error}</p>}
+
+      {loading ? (
+        <LoadingSpinner />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title={`No ${config.titlePlural.toLowerCase()} yet`}
+          message={`Add your first ${config.titleSingular.toLowerCase()} to start tracking it here.`}
+          action={
+            <button onClick={() => setModal({ mode: 'create' })} className="rounded-lg bg-moto-500 px-4 py-2 text-sm font-medium text-white hover:bg-moto-600">
+              Add {config.titleSingular}
+            </button>
+          }
+        />
+      ) : (
+        <DataTable
+          columns={config.columns}
+          rows={filtered}
+          onEdit={row => setModal({ mode: 'edit', row })}
+          onDelete={row => setPendingDelete(row)}
+        />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {config.fields.map(field => {
-          const value = formData[field.key] ?? field.default ?? ''
+      <Modal open={!!modal} title={modal?.mode === 'edit' ? `Edit ${config.titleSingular}` : `Add ${config.titleSingular}`} onClose={() => setModal(null)} wide>
+        {modal && (
+          <ResourceForm
+            config={config}
+            initialValues={modal.row}
+            onSubmit={handleSubmit}
+            onCancel={() => setModal(null)}
+            submitLabel={modal.mode === 'edit' ? 'Save changes' : 'Add'}
+          />
+        )}
+      </Modal>
 
-          return (
-            <div key={field.key} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
-              <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
-                {field.label} {field.required && <span className="text-rose-500">*</span>}
-              </label>
-
-              {field.type === 'select' && (
-                <select
-                  value={value}
-                  required={field.required}
-                  onChange={e => handleChange(field.key, e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
-                >
-                  <option value="">-- Select {field.label} --</option>
-                  {field.options?.map(opt => (
-                    <option key={opt} value={opt}>
-                      {opt.replace('_', ' ').toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {field.type === 'relation' && (
-                <select
-                  value={value}
-                  required={field.required}
-                  onChange={e => handleChange(field.key, e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
-                >
-                  <option value="">-- Select {field.label} --</option>
-                  {(relationOptions[field.key] || []).map(opt => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {field.type === 'textarea' && (
-                <textarea
-                  rows={3}
-                  value={value}
-                  required={field.required}
-                  onChange={e => handleChange(field.key, e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
-                />
-              )}
-
-              {field.type === 'boolean' && (
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    checked={!!formData[field.key]}
-                    onChange={e => handleChange(field.key, e.target.checked)}
-                    className="w-4 h-4 rounded text-moto-600 focus:ring-moto-500 border-line"
-                  />
-                  <span className="text-sm font-medium text-ink">{field.label}</span>
-                </div>
-              )}
-
-              {!['select', 'relation', 'textarea', 'boolean'].includes(field.type) && (
-                <input
-                  type={field.type || 'text'}
-                  value={field.type === 'file' ? undefined : value}
-                  required={field.required}
-                  onChange={e => handleChange(field.key, e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper-raised p-2.5 text-sm text-ink focus:border-moto-500 focus:outline-none"
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="flex items-center justify-end gap-3 border-t border-line pt-4 mt-6">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={submitting}
-          className="rounded-xl border border-line bg-paper px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-xl bg-moto-500 px-5 py-2 text-sm font-semibold text-white hover:bg-moto-600 transition-colors shadow-sm disabled:opacity-50"
-        >
-          {submitting ? 'Saving…' : (submitLabel || 'Save')}
-        </button>
-      </div>
-    </form>
+      <ConfirmDialog
+        open={!!pendingDelete}
+        message={`This will permanently delete this ${config.titleSingular.toLowerCase()} record.`}
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </div>
   )
 }
