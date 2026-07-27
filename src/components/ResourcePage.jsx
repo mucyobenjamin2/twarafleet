@@ -12,7 +12,12 @@ function getNested(obj, path) {
 }
 
 export default function ResourcePage({ config }) {
-  const { rows, loading, error, create, update, remove } = useTable(config.table, { select: config.select })
+  // 🔥 FIX NYAYO: Passing strict filter so useTable fetches data owned strictly by the logged-in admin
+  const { rows, loading, error, create, update, remove } = useTable(config.table, { 
+    select: config.select,
+    filter: (query, user) => query.eq('owner_id', user.id)
+  })
+
   const [modal, setModal] = useState(null) // { mode: 'create' | 'edit', row }
   const [pendingDelete, setPendingDelete] = useState(null)
   const [query, setQuery] = useState('')
