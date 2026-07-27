@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLookup } from '../hooks/useLookup'
 import FileUpload from './FileUpload'
+import { supabase } from '../lib/supabaseClient'
 
 function defaultFor(field) {
   if (field.default === 'today') return new Date().toISOString().slice(0, 10)
@@ -10,7 +11,13 @@ function defaultFor(field) {
 }
 
 function RelationField({ field, value, onChange }) {
-  const { options, loading } = useLookup(field.relation.table, `id, ${field.relation.labelKey}`)
+  // 🔥 FIX NYAYO: Passing filter to useLookup so relation dropdown options are strictly for logged-in admin owner_id
+  const { options, loading } = useLookup(
+    field.relation.table, 
+    `id, ${field.relation.labelKey}`,
+    (query, user) => query.eq('owner_id', user.id)
+  )
+
   return (
     <select
       value={value ?? ''}
