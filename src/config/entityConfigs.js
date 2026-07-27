@@ -10,7 +10,7 @@ export const motorcycleConfig = {
   columns: [
     { key: 'plate_number', label: 'Plate', plate: true },
     { key: 'brand', label: 'Brand' },
-    { key: 'model', label: 'Model' },
+    { key: 'off_day', label: 'Weekly Off-Day', badge: true },
     { key: 'daily_target', label: 'Daily target', money: true },
     { key: 'status', label: 'Status', badge: true }
   ],
@@ -23,6 +23,14 @@ export const motorcycleConfig = {
     { key: 'motorcycle_phone', label: 'Motorcycle phone', type: 'text' },
     { key: 'purchase_price', label: 'Purchase price (RWF)', type: 'number' },
     { key: 'purchase_date', label: 'Purchase date', type: 'date' },
+    { 
+      key: 'off_day', 
+      label: 'Automatic Weekly Off-Day (No debt on this day)', 
+      type: 'select', 
+      options: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'none'], 
+      default: 'saturday',
+      required: true 
+    },
     { key: 'daily_target', label: 'Daily target (RWF)', type: 'number', default: 6000 },
     { key: 'status', label: 'Status', type: 'select', options: ['active', 'garage', 'maintenance', 'sold'], default: 'active' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
@@ -126,7 +134,7 @@ export const nonWorkingDayConfig = {
     { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'weekend_off', 'other'], default: 'other' },
     { key: 'description', label: 'Description', type: 'textarea' }
   ],
-  helperNote: 'Gena umunsi wose ikinyabiziga kitagomba kubara ideni (Off day, garage, ku wa gatandatu, cyangwa ikiruhuko).'
+  helperNote: 'Gena umunsi wose w\'i nyongeye ikinyabiziga kitagomba kubara ideni (Garage, ikiruhuko cyihariye, sick leave).'
 }
 
 export const savingsGoalConfig = {
