@@ -23,7 +23,7 @@ export function useDashboardStats() {
 
       const targetTotal = activeFleet.reduce((acc, curr) => acc + (parseFloat(curr.daily_target) || 0), 0)
 
-      // 2. Fetch TODAY'S PAID VERSEMENTS ONLY (Tukuyeho iziri pending!)
+      // 2. Fetch TODAY'S PAID VERSEMENTS ONLY (Strictly collection_date = todayStr)
       const todayStr = new Date().toISOString().split('T')[0]
       
       const { data: todayVersements } = await supabase
@@ -31,7 +31,7 @@ export function useDashboardStats() {
         .select('amount, motorcycle_id')
         .eq('owner_id', user.id)
         .eq('status', 'paid') // 🔥 SOMA IZEMEWE GUSA (APPROVED)
-        .gte('created_at', `${todayStr}T00:00:00`)
+        .eq('collection_date', todayStr) // 🔥 FIX NYAYO: Filter strictly by collection_date = YYYY-MM-DD
 
       const collectedTotal = todayVersements?.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0) || 0
       
