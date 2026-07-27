@@ -11,6 +11,13 @@ export function useDashboardStats() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      const todayObj = new Date()
+      const todayStr = todayObj.toISOString().split('T')[0]
+
+      // Shaka izina ry'umunsi w'uyu munsi mu muvuno w'inguni y'icyumweru
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+      const currentDayName = dayNames[todayObj.getDay()]
+
       // 1. Fetch motorcycles owned by uyu admin
       const { data: motorcycles } = await supabase
         .from('motorcycles')
@@ -21,11 +28,33 @@ export function useDashboardStats() {
       const activeFleet = motorcycles?.filter(m => m.status === 'active') || []
       const activeFleetCount = activeFleet.length
 
-      const targetTotal = activeFleet.reduce((acc, curr) => acc + (parseFloat(curr.daily_target) || 0), 0)
+      // 🔍 Fetch Specific Non-Working Days recorded for TODAY strictly
+      const { data: todayOffDays } = await supabase
+        .from('non_working_days')
+        .select('motorcycle_id')
+        .eq('owner_id', user.id)
+        .eq('date', todayStr)
+
+      const specificOffMotoIds = new Set(todayOffDays?.map(d => d.motorcycle_id) || [])
+
+      // 🌟 CALCULATE TARGET TOTAL: Kuramo moto zifite Off-Day uyu munsi!
+      const targetTotal = activeFleet.reduce((acc, curr) => {
+        const motoOffDay = (curr.off_day || 'saturday').toLowerCase()
+        
+        // A. Niba uyu munsi ari weekly off-day ya moto
+        const isWeeklyOff = (motoOffDay === currentDayName)
+        // B. Niba moto yanditswe muri non_working_days y'uyu munsi
+        const isSpecificOff = specificOffMotoIds.has(curr.id)
+
+        // Niba iri mu kiruhuko, target yayo ya none ni 0 RWF
+        if (isWeeklyOff || isSpecificOff) {
+          return acc
+        }
+
+        return acc + (parseFloat(curr.daily_target) || 0)
+      }, 0)
 
       // 2. Fetch TODAY'S PAID VERSEMENTS ONLY (Strictly collection_date = todayStr)
-      const todayStr = new Date().toISOString().split('T')[0]
-      
       const { data: todayVersements } = await supabase
         .from('versements')
         .select('amount, motorcycle_id')
