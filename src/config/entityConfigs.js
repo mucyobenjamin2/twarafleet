@@ -104,7 +104,7 @@ export const expenseConfig = {
     { key: 'expense_date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved', 'rejected'], default: 'pending' },
     { key: 'receipt_url', label: 'Receipt', type: 'file', folder: 'receipts' }
   ]
 }
@@ -123,10 +123,10 @@ export const nonWorkingDayConfig = {
   fields: [
     { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
     { key: 'date', label: 'Date', type: 'date', default: 'today', required: true },
-    { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'other'], default: 'other' },
+    { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'weekend_off', 'other'], default: 'other' },
     { key: 'description', label: 'Description', type: 'textarea' }
   ],
-  helperNote: 'Saturdays are skipped automatically fleet-wide — only log exceptions here (extra days off, garage time, accidents, sick leave).'
+  helperNote: 'Gena umunsi wose ikinyabiziga kitagomba kubara ideni (Off day, garage, ku wa gatandatu, cyangwa ikiruhuko).'
 }
 
 export const savingsGoalConfig = {
@@ -286,7 +286,7 @@ export const versementConfig = {
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'mobile_money' },
     { key: 'reference_number', label: 'Reference number', type: 'text' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid', 'partial', 'unpaid'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid', 'partial', 'unpaid', 'rejected'], default: 'pending' },
     { key: 'screenshot_url', label: 'Payment screenshot', type: 'file', folder: 'versements' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
   ]
