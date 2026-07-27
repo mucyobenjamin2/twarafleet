@@ -138,7 +138,8 @@ export default function Dashboard() {
       setPendingVersements(prev => prev.filter(item => item.id !== id))
       window.location.reload()
     } catch (err) {
-      console.error(err.message)
+      console.error('Error approving versement:', err.message)
+      alert('Habaye ikosa mu kwemeza versement: ' + err.message)
     }
   }
 
@@ -149,6 +150,7 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // 🔥 FIX NYAYO: Guarantee owner_id is set so trigger and RLS process smoothly
       const { error } = await supabase
         .from('versements')
         .update({ status: 'rejected', owner_id: user.id })
@@ -158,10 +160,12 @@ export default function Dashboard() {
       setPendingVersements(prev => prev.filter(item => item.id !== id))
       window.location.reload()
     } catch (err) {
-      console.error(err.message)
+      console.error('Error rejecting versement:', err.message)
+      alert('Habaye ikosa mu kwanga versement: ' + err.message)
     }
   }
 
+  // ✅ ACTION 3: APPROVE EXPENSE
   async function handleApproveExpense(id) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -176,19 +180,30 @@ export default function Dashboard() {
       setPendingExpenses(prev => prev.filter(item => item.id !== id))
       window.location.reload()
     } catch (err) {
-      console.error(err.message)
+      console.error('Error approving expense:', err.message)
+      alert('Habaye ikosa mu kwemeza depanse: ' + err.message)
     }
   }
 
+  // ❌ ACTION 4: REJECT EXPENSE
   async function handleRejectExpense(id) {
     if (!window.confirm('Ese urashaka kwanga (Reject) iyi depanse?')) return
     try {
-      const { error } = await supabase.from('expenses').update({ status: 'rejected' }).eq('id', id);
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // 🔥 FIX NYAYO: Update with owner_id for full permissions
+      const { error } = await supabase
+        .from('expenses')
+        .update({ status: 'rejected', owner_id: user.id })
+        .eq('id', id);
+
       if (error) throw error;
       setPendingExpenses(prev => prev.filter(item => item.id !== id))
       window.location.reload()
     } catch (err) {
-      console.error(err.message)
+      console.error('Error rejecting expense:', err.message)
+      alert('Habaye ikosa mu kwanga depanse: ' + err.message)
     }
   }
 
