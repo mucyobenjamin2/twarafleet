@@ -10,7 +10,6 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState(null)
   
-  // States zo gucunga Push Notifications Status
   const [notifStatus, setNotifStatus] = useState(null)
   const [enablingNotif, setEnablingNotif] = useState(false)
 
@@ -23,22 +22,17 @@ export default function Settings() {
     setSaving(false)
   }
 
-  // Function yo gufata no gusaba uruhushya rwa Push Notification
   async function handleEnableNotifications() {
     setEnablingNotif(true)
     setNotifStatus(null)
     try {
-      // Saba permission ya OneSignal ku buryo buzira amananiza
-      const permission = await OneSignal.Notifications.requestPermission()
-      
-      if (permission) {
-        setNotifStatus('✅ Push Notifications zemejwe neza kuri iyi telefone!')
-      } else {
-        setNotifStatus('⚠️ Uruhushya rwangijwe. Niba bibaye ngombwa, kanda ku kimenyetso cy\'agafuri 🔒 hafi ya URL muri browser uhe notifications uruhushya.')
+      if (typeof window !== 'undefined' && OneSignal) {
+        await OneSignal.showNativePrompt()
+        setNotifStatus('✅ Push Notifications status yagombaga gufunguka. Niba bitaje, jya muri site permissions ya Chrome uhakande Allow.')
       }
     } catch (err) {
       console.error('OneSignal permission error:', err)
-      setNotifStatus('❌ Harazamo ikosa mu gusesengura notifications. Koresha browser yakiriye PWA.')
+      setNotifStatus('❌ Ikosa ryabonetse. Reba ko browser yawe yemera Push Notifications.')
     } finally {
       setEnablingNotif(false)
     }
@@ -51,7 +45,6 @@ export default function Settings() {
         <p className="text-sm text-ink-soft">Manage your owner profile and app notifications.</p>
       </div>
 
-      {/* Profile Form */}
       <form onSubmit={save} className="space-y-4 rounded-2xl border border-line bg-paper-raised p-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-ink">Full name</label>
@@ -71,12 +64,11 @@ export default function Settings() {
         </button>
       </form>
 
-      {/* Push Notifications Card */}
       <div className="space-y-3 rounded-2xl border border-line bg-paper-raised p-4">
         <div>
           <h2 className="text-base font-medium text-ink">Mobile & Browser Push Notifications</h2>
           <p className="text-xs text-ink-soft">
-            Kanda hano ngo ukoreshe Notifications kuri iyi telefone, ikujye ikuha "🚨 Wait for Approver!" igihe cyose hari Versement nshya.
+            Kanda hano ngo ukoreshe Notifications kuri iyi telefone.
           </p>
         </div>
 
