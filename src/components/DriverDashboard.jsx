@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar } from 'lucide-react';
+import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 import twaraLogo from '../assets/logo.png';
 
@@ -471,6 +471,9 @@ export default function DriverDashboard() {
                 <div className="space-y-3">
                   {historyItems.map((item) => {
                     const isVersement = item.type === 'versement';
+                    const isApproved = item.status === 'paid' || item.status === 'approved';
+                    const isRejected = item.status === 'rejected';
+
                     return (
                       <div key={`${item.type}-${item.id}`} className={`p-4 rounded-xl border flex justify-between items-center ${darkMode ? 'bg-[#0f172a] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
                         <div className="flex items-center gap-3">
@@ -491,12 +494,18 @@ export default function DriverDashboard() {
                           <p className={`font-mono font-bold text-sm ${isVersement ? 'text-emerald-500' : 'text-orange-500'}`}>
                             {isVersement ? `+` : `-`} {item.amount.toLocaleString()} RWF
                           </p>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1 mt-1 ${
-                            item.status === 'paid' || item.status === 'approved' 
-                              ? 'bg-emerald-500/10 text-emerald-400' 
-                              : 'bg-amber-500/10 text-amber-400'
+                          
+                          {/* 🌟 STATUS BADGE DISPLAYER: PAID / APPROVED (Green), REJECTED (Red), PENDING (Amber) */}
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1 mt-1 border ${
+                            isApproved
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                              : isRejected
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           }`}>
-                            {item.status === 'paid' || item.status === 'approved' ? 'Success' : 'Pending'}
+                            {isApproved && <><CheckCircle2 size={11} /> Success</>}
+                            {isRejected && <><XCircle size={11} /> Rejected</>}
+                            {!isApproved && !isRejected && <><Clock size={11} /> Pending</>}
                           </span>
                         </div>
                       </div>
