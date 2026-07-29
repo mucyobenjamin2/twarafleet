@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle, ShieldAlert, Send } from 'lucide-react';
 
 import twaraLogo from '../assets/logo.png';
 
@@ -10,6 +10,11 @@ export default function DriverDashboard() {
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState('versement');
   const [metaPlate, setMetaPlate] = useState('N/A');
+  
+  // States za Traffic Fines
+  const [fines, setFines] = useState([]);
+  const [payingFineId, setPayingFineId] = useState(null);
+  const [momoRef, setMomoRef] = useState('');
   
   // States za fomu ya Versement
   const [amount, setAmount] = useState('');
@@ -42,6 +47,20 @@ export default function DriverDashboard() {
     { value: 'other', label: '📦 Ikindi Cyose (Other)' }
   ];
 
+  const fetchDriverFines = async (driverId) => {
+    try {
+      const { data: finesData } = await supabase
+        .from('fines')
+        .select('*')
+        .eq('driver_id', driverId)
+        .order('created_at', { ascending: false });
+
+      setFines(finesData || []);
+    } catch (err) {
+      console.error("Error fetching fines:", err.message);
+    }
+  };
+
   useEffect(() => {
     async function getFreshMetadata() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -50,9 +69,54 @@ export default function DriverDashboard() {
       } else if (profile?.motorcycle_plate) {
         setMetaPlate(profile.motorcycle_plate);
       }
+
+      // Load driver fines
+      const { data: driverData } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('email', profile?.email)
+        .single();
+
+      if (driverData) {
+        fetchDriverFines(driverData.id);
+      }
     }
     getFreshMetadata();
   }, [profile]);
+
+  const handleMarkFineAsPaid = async (fineId) => {
+    try {
+      setSubmitting(true);
+      const { error } = await supabase
+        .from('fines')
+        .update({
+          status: 'paid_by_driver',
+          momo_ref: momoRef || 'MoMo Direct'
+        })
+        .eq('id', fineId);
+
+      if (!error) {
+        setPayingFineId(null);
+        setMomoRef('');
+        setMsg({ type: 'success', text: 'Ubwishyu bw\'amande bwamaze kumenyeshwa Admin! 🚦' });
+        
+        // Refresh fines list
+        const { data: driverData } = await supabase
+          .from('drivers')
+          .select('id')
+          .eq('email', profile?.email)
+          .single();
+
+        if (driverData) fetchDriverFines(driverData.id);
+      } else {
+        throw error;
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Harimo ikosa, ongera ugerageze.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchDriverHistory = async () => {
     try {
@@ -112,7 +176,6 @@ export default function DriverDashboard() {
     }
   }, [activeTab]);
 
-  // 💰 WATERFALL BILLING ENGINE: CURRENT TARGET -> ACTIVE DEBTS DECUCTION -> TOMORROW SAVINGS
   const handleSubmitVersement = async (e) => {
     e.preventDefault();
     if (!amount || !date || !transactionId.trim()) {
@@ -152,10 +215,7 @@ export default function DriverDashboard() {
       const targetDaily = assignData?.motorcycles?.daily_target || 6000; 
       const isCurrentDate = (selectedDateStr === todayStr);
 
-      // 🌟 IFREMU A: NIBA ARI ITARIKI YA NONE (CURRENT DATE PROCESSOR)
       if (isCurrentDate) {
-        
-        // 1. Mbese yishyuye munsi ya Target? (Auto-Debt Creator Mode)
         if (remainingMoney < targetDaily) {
           const { error: insErr } = await supabase.from('versements').insert([{
             owner_id: driverData.owner_id, 
@@ -189,7 +249,6 @@ export default function DriverDashboard() {
           return;
         }
 
-        // 2. Yishyuye target cyangwa arengaho: Banza utemo 6,000 RWF y'uyu munsi ibe set!
         const { error: insCurrentErr } = await supabase.from('versements').insert([{
           owner_id: driverData.owner_id, 
           driver_id: driverData.id,
@@ -202,10 +261,9 @@ export default function DriverDashboard() {
         }]);
         if (insCurrentErr) throw insCurrentErr;
 
-        remainingMoney -= targetDaily; // Hasigaye murengera (Surplus)
+        remainingMoney -= targetDaily; 
         let debtLogsCleared = 0;
 
-        // 3. 🔍 REBA AMADENI ARI ACTIVE AYAKUREMO UHEREYE KU RYA KERA
         if (remainingMoney > 0 && assignData?.motorcycle_id) {
           const { data: activeDebts } = await supabase
             .from('debts')
@@ -222,13 +280,11 @@ export default function DriverDashboard() {
               const newRemainingDebt = debt.remaining_amount - moneyToApply;
               const newStatus = newRemainingDebt === 0 ? 'paid' : 'active';
 
-              // Vugurura remaining balance y'ideni
               await supabase.from('debts').update({
                 remaining_amount: newRemainingDebt,
                 status: newStatus
               }).eq('id', debt.id);
 
-              // Gushyira versement ihwanye n'iryo deni ku itariki ryabereyeho
               await supabase.from('versements').insert([{
                 owner_id: driverData.owner_id,
                 driver_id: driverData.id,
@@ -247,7 +303,6 @@ export default function DriverDashboard() {
           }
         }
 
-        // 4. 🚀 SAVING OF TOMORROW (ADVANCE): Niba na n'ubu hari asigaye nyuma y'amadeni yose, ajya ejo!
         if (remainingMoney > 0) {
           const tomorrowObj = new Date();
           tomorrowObj.setDate(tomorrowObj.getDate() + 1);
@@ -271,7 +326,6 @@ export default function DriverDashboard() {
         }
 
       } else {
-        // 🌟 IFREMU B: NIBA ARI ITARIKI YA KERA (PAST DATE) - Ijyana amakuru uko ari nta deni/advance nshya
         const { error: insErr } = await supabase.from('versements').insert([{
           owner_id: driverData.owner_id, 
           driver_id: driverData.id,
@@ -357,6 +411,8 @@ export default function DriverDashboard() {
     }
   };
 
+  const unpaidFines = fines.filter(f => f.status !== 'approved');
+
   return (
     <div className={`min-h-screen font-sans transition-colors duration-200 ${darkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
       
@@ -388,8 +444,80 @@ export default function DriverDashboard() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className={`flex gap-6 mb-6 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+      <main className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+        {/* 🚨 TRAFFIC FINES NOTIFICATION SECTION */}
+        {unpaidFines.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-xs font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert size={16} /> Traffic Fines Itarashyurwa ({unpaidFines.length})
+            </h2>
+
+            {unpaidFines.map(fine => (
+              <div 
+                key={fine.id} 
+                className={`p-4 rounded-xl border transition ${
+                  fine.status === 'paid_by_driver'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-200'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Ref: {fine.reference_number}</span>
+                    <p className="font-bold text-sm text-white mt-0.5">{fine.reason}</p>
+                  </div>
+                  <span className="text-sm font-extrabold text-rose-400 font-mono">{Number(fine.amount).toLocaleString()} RWF</span>
+                </div>
+
+                {fine.status === 'paid_by_driver' ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300">
+                    <Clock size={14} className="animate-spin" />
+                    <span>Wamaze kumenyesha Admin. Itagereje kwemezwa...</span>
+                  </div>
+                ) : (
+                  <div className="mt-3 border-t border-rose-500/20 pt-3">
+                    {payingFineId === fine.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Injiza MoMo Trans Ref (Optionnel)"
+                          value={momoRef}
+                          onChange={e => setMomoRef(e.target.value)}
+                          className={`w-full border p-2 rounded-lg text-xs ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleMarkFineAsPaid(fine.id)}
+                            disabled={submitting}
+                            className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            <Send size={12} /> {submitting ? 'Kohereza...' : 'Emeza ko wayishyuye'}
+                          </button>
+                          <button
+                            onClick={() => setPayingFineId(null)}
+                            className="rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-400"
+                          >
+                            Siba
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setPayingFineId(fine.id)}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm"
+                      >
+                        <CheckCircle2 size={14} /> Naasoreye / Naayishyuye (Mark as Paid)
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className={`flex gap-6 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
           {[ {id:'versement', label:'Versement', icon:DollarSign}, {id:'depense', label:'Depense', icon:Wrench}, {id:'history', label:'History', icon:History} ].map(tab => (
             <button 
               key={tab.id} 
@@ -495,7 +623,6 @@ export default function DriverDashboard() {
                             {isVersement ? `+` : `-`} {item.amount.toLocaleString()} RWF
                           </p>
                           
-                          {/* 🌟 STATUS BADGE DISPLAYER: PAID / APPROVED (Green), REJECTED (Red), PENDING (Amber) */}
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1 mt-1 border ${
                             isApproved
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
