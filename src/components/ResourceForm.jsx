@@ -11,6 +11,7 @@ function defaultFor(field) {
 
 function RelationField({ field, value, onChange }) {
   const { options, loading } = useLookup(field.relation.table, `id, ${field.relation.labelKey}`)
+
   return (
     <select
       value={value ?? ''}
@@ -18,8 +19,8 @@ function RelationField({ field, value, onChange }) {
       required={field.required}
       className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-moto-500"
     >
-      <option value="">{loading ? 'Loading…' : `Select ${field.label.toLowerCase()}`}</option>
-      {options.map(opt => (
+      <option value="">{loading ? 'Loading options…' : `Select ${field.label.toLowerCase()}`}</option>
+      {!loading && options.map(opt => (
         <option key={opt.id} value={opt.id}>{opt[field.relation.labelKey]}</option>
       ))}
     </select>

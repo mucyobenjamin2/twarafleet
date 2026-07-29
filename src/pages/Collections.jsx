@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatRWF, formatDate } from '../lib/format'
-import { DollarSign, CheckCircle, Clock, Calendar, Eye, EyeOff, Bike, User, Plus } from 'lucide-react'
+import { DollarSign, CheckCircle, Clock, CalendarOff, Eye, EyeOff, Bike, User, Plus } from 'lucide-react'
 
 export default function Collections() {
   const [versements, setVersements] = useState([])
@@ -28,17 +28,28 @@ export default function Collections() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const todayStr = new Date().toISOString().split('T')[0]
+      const todayObj = new Date()
+      const todayStr = todayObj.toISOString().split('T')[0]
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+      const currentDayName = dayNames[todayObj.getDay()]
 
       // 1. Soma ama-motorcycles yose ari active ngo ubane Expected Target y'umunsi
       const { data: activeMotos } = await supabase
         .from('motorcycles')
-        .select('id, plate_number, daily_target')
+        .select('id, plate_number, daily_target, off_day')
         .eq('owner_id', user.id)
         .eq('status', 'active')
 
       setMotorcycles(activeMotos || [])
-      const expectedSum = activeMotos?.reduce((acc, curr) => acc + (curr.daily_target || 6000), 0) || 0
+
+      // Fetch specific non working days for TODAY
+      const { data: todayOffDays } = await supabase
+        .from('non_working_days')
+        .select('motorcycle_id')
+        .eq('owner_id', user.id)
+        .eq('date', todayStr)
+
+      const specificOffMotoIds = new Set(todayOffDays?.map(d => d.motorcycle_id) || [])
 
       // 2. Soma ama-versements yose afite isano n'uyu Admin
       const { data: vData, error } = await supabase
@@ -73,7 +84,13 @@ export default function Collections() {
         )
 
         const totalPaidToday = todayPayments.reduce((acc, curr) => acc + curr.amount, 0)
-        const target = moto.daily_target || 6000
+        
+        const motoOffDay = (moto.off_day || 'saturday').toLowerCase()
+        const isWeeklyOff = (motoOffDay === currentDayName)
+        const isSpecificOff = specificOffMotoIds.has(moto.id)
+        const isDayOff = isWeeklyOff || isSpecificOff
+
+        const target = isDayOff ? 0 : (moto.daily_target || 6000)
 
         matrixTargetSum += target
         matrixPaidSum += totalPaidToday
@@ -81,7 +98,10 @@ export default function Collections() {
         let dayStatus = 'Unpaid'
         let statusColor = 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
         
-        if (totalPaidToday >= target) {
+        if (isDayOff) {
+          dayStatus = 'Day Off'
+          statusColor = 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
+        } else if (totalPaidToday >= target && target > 0) {
           dayStatus = 'Paid'
           statusColor = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
         } else if (totalPaidToday > 0) {
@@ -95,7 +115,8 @@ export default function Collections() {
           target: target,
           paid: totalPaidToday,
           status: dayStatus,
-          color: statusColor
+          color: statusColor,
+          isDayOff
         }
       }) || []
 
@@ -111,7 +132,7 @@ export default function Collections() {
       })
 
       setStats({
-        expected: expectedSum,
+        expected: matrixTargetSum,
         collected: collectedSum,
         pending: pendingSum
       })
@@ -226,7 +247,6 @@ export default function Collections() {
             <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Collected Today (Umunsi wa None)</p>
             <span className="rounded-lg p-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"><CheckCircle size={16} /></span>
           </div>
-          {/* * PAID TODAY YAGIZWE NINI CYANE HIGHLIGHTED */}
           <p className="mt-2 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {formatRWF(matrixTotals.paid)}
           </p>
@@ -286,6 +306,7 @@ export default function Collections() {
                   <td className="p-3 font-mono font-bold text-ink">{formatRWF(row.paid)}</td>
                   <td className="p-3 text-right">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${row.color}`}>
+                      {row.isDayOff && <CalendarOff size={11} />}
                       {row.status}
                     </span>
                   </td>

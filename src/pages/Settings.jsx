@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import OneSignal from 'react-onesignal'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 
@@ -8,6 +9,9 @@ export default function Settings() {
   const [phone, setPhone] = useState(profile?.phone_number ?? '')
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState(null)
+  
+  const [notifStatus, setNotifStatus] = useState(null)
+  const [enablingNotif, setEnablingNotif] = useState(false)
 
   async function save(e) {
     e.preventDefault()
@@ -18,11 +22,27 @@ export default function Settings() {
     setSaving(false)
   }
 
+  async function handleEnableNotifications() {
+    setEnablingNotif(true)
+    setNotifStatus(null)
+    try {
+      if (typeof window !== 'undefined' && OneSignal) {
+        await OneSignal.showNativePrompt()
+        setNotifStatus('✅ Push Notifications status yagombaga gufunguka. Niba bitaje, jya muri site permissions ya Chrome uhakande Allow.')
+      }
+    } catch (err) {
+      console.error('OneSignal permission error:', err)
+      setNotifStatus('❌ Ikosa ryabonetse. Reba ko browser yawe yemera Push Notifications.')
+    } finally {
+      setEnablingNotif(false)
+    }
+  }
+
   return (
     <div className="max-w-md space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-ink">Settings</h1>
-        <p className="text-sm text-ink-soft">Manage your owner profile.</p>
+        <p className="text-sm text-ink-soft">Manage your owner profile and app notifications.</p>
       </div>
 
       <form onSubmit={save} className="space-y-4 rounded-2xl border border-line bg-paper-raised p-4">
@@ -43,6 +63,30 @@ export default function Settings() {
           {saving ? 'Saving…' : 'Save changes'}
         </button>
       </form>
+
+      <div className="space-y-3 rounded-2xl border border-line bg-paper-raised p-4">
+        <div>
+          <h2 className="text-base font-medium text-ink">Mobile & Browser Push Notifications</h2>
+          <p className="text-xs text-ink-soft">
+            Kanda hano ngo ukoreshe Notifications kuri iyi telefone.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleEnableNotifications}
+          disabled={enablingNotif}
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          🔔 {enablingNotif ? 'Gusaba Uruhushya…' : 'Enable Push Notifications'}
+        </button>
+
+        {notifStatus && (
+          <p className="mt-2 text-xs font-medium text-ink">
+            {notifStatus}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

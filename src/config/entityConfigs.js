@@ -10,7 +10,7 @@ export const motorcycleConfig = {
   columns: [
     { key: 'plate_number', label: 'Plate', plate: true },
     { key: 'brand', label: 'Brand' },
-    { key: 'model', label: 'Model' },
+    { key: 'off_day', label: 'Weekly Off-Day', badge: true },
     { key: 'daily_target', label: 'Daily target', money: true },
     { key: 'status', label: 'Status', badge: true }
   ],
@@ -23,6 +23,14 @@ export const motorcycleConfig = {
     { key: 'motorcycle_phone', label: 'Motorcycle phone', type: 'text' },
     { key: 'purchase_price', label: 'Purchase price (RWF)', type: 'number' },
     { key: 'purchase_date', label: 'Purchase date', type: 'date' },
+    { 
+      key: 'off_day', 
+      label: 'Automatic Weekly Off-Day (No debt on this day)', 
+      type: 'select', 
+      options: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'none'], 
+      default: 'saturday',
+      required: true 
+    },
     { key: 'daily_target', label: 'Daily target (RWF)', type: 'number', default: 6000 },
     { key: 'status', label: 'Status', type: 'select', options: ['active', 'garage', 'maintenance', 'sold'], default: 'active' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
@@ -104,7 +112,7 @@ export const expenseConfig = {
     { key: 'expense_date', label: 'Date', type: 'date', default: 'today', required: true },
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'approved', 'rejected'], default: 'pending' },
     { key: 'receipt_url', label: 'Receipt', type: 'file', folder: 'receipts' }
   ]
 }
@@ -123,10 +131,10 @@ export const nonWorkingDayConfig = {
   fields: [
     { key: 'motorcycle_id', label: 'Motorcycle', type: 'relation', relation: { table: 'motorcycles', labelKey: 'plate_number' }, required: true },
     { key: 'date', label: 'Date', type: 'date', default: 'today', required: true },
-    { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'other'], default: 'other' },
+    { key: 'reason', label: 'Reason', type: 'select', options: ['garage', 'accident', 'driver_sick', 'public_holiday', 'personal_leave', 'weekend_off', 'other'], default: 'other' },
     { key: 'description', label: 'Description', type: 'textarea' }
   ],
-  helperNote: 'Saturdays are skipped automatically fleet-wide — only log exceptions here (extra days off, garage time, accidents, sick leave).'
+  helperNote: 'Gena umunsi wose w\'i nyongeye ikinyabiziga kitagomba kubara ideni (Garage, ikiruhuko cyihariye, sick leave).'
 }
 
 export const savingsGoalConfig = {
@@ -286,7 +294,7 @@ export const versementConfig = {
     { key: 'amount', label: 'Amount (RWF)', type: 'number', required: true },
     { key: 'payment_method', label: 'Payment method', type: 'select', options: ['cash', 'mobile_money', 'bank_transfer', 'other'], default: 'mobile_money' },
     { key: 'reference_number', label: 'Reference number', type: 'text' },
-    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid', 'partial', 'unpaid'], default: 'pending' },
+    { key: 'status', label: 'Status', type: 'select', options: ['pending', 'paid', 'partial', 'unpaid', 'rejected'], default: 'pending' },
     { key: 'screenshot_url', label: 'Payment screenshot', type: 'file', folder: 'versements' },
     { key: 'notes', label: 'Notes', type: 'textarea' }
   ]
