@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+
+// 💡 FIX: Secondary client itazagira icyo ihindura kuri session y'Admin uri kuko
+const tempSupabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false // Rituma umushoferi mushya ataza gusimbura Admin session
+    }
+  }
+)
 
 export function useTable(tableName, options = {}) {
   const [rows, setRows] = useState([])
@@ -61,8 +73,8 @@ export function useTable(tableName, options = {}) {
         finalEmail = `${cleanPhone}@twarafleet.com`
       }
 
-      // 2. Rema account muri Supabase Auth
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
+      // 2. Rema account muri Supabase Auth ukoresheje tempSupabase (Ntabwo iza gukora Auto-login)
+      const { data: authData, error: authErr } = await tempSupabase.auth.signUp({
         email: finalEmail,
         password: values.password,
         options: {
@@ -80,7 +92,7 @@ export function useTable(tableName, options = {}) {
         payload.auth_user_id = authData.user.id
         payload.email = finalEmail
 
-        // Gushyira amakuru muri public.users directly
+        // Gushyira amakuru muri public.users directly ukoresheje Admin client (supabase)
         const { error: userErr } = await supabase.from('users').insert([{
           auth_user_id: authData.user.id,
           email: finalEmail,
@@ -96,9 +108,9 @@ export function useTable(tableName, options = {}) {
         }
       }
 
-      // 🚨 KOSORA HANO (THE FIX): Siba plate_number kuri payload kuko ntibaho muri table ya drivers!
-      // Ibi birakumira ririya kosa rya Schema cache bidasubirwaho.
+      // 🚨 KOSORA HANO: Siba plate_number na password muri payload kuko ntibaho muri table ya drivers!
       delete payload.plate_number;
+      delete payload.password;
       payload.owner_id = adminId;
 
       // 3. Kubika amakuru muri public.drivers
