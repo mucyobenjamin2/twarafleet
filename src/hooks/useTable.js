@@ -14,7 +14,6 @@ export function useTable(tableName, options = {}) {
 
       let query = supabase.from(tableName).select(options.select || '*')
       
-      // ✅ KURAHO FILTERS KURI EXPENSES NA VERSEMENTS Z'ABASHOFERI
       if (tableName !== 'expenses' && tableName !== 'versements') {
         query = query.eq('owner_id', user.id)
       }
@@ -30,19 +29,17 @@ export function useTable(tableName, options = {}) {
   }, [tableName, options.select])
 
   const create = async (values) => {
-    // ✅ Bika ID ya Admin hakiri kare cyane mbere y'uko session ihinduka!
     const { data: { user: adminUser } } = await supabase.auth.getUser()
     const adminId = adminUser?.id
     
     let payload = { ...values, owner_id: adminId }
 
-    // 🏎️ IGIHE ADMIN AREMA UMUSHOFERI MUSHYA (NEW DRIVER)
+    // 🏎️ IGIHE ADMIN AREMA UMUSHOFERI MUSHYA
     if (tableName === 'drivers') {
       let finalEmail = values.email?.trim()
       let actualPlateNumber = 'N/A'
-      let selectedMotorcycleId = values.plate_number; // UUID ya moto yatorewe mu fomu
+      let selectedMotorcycleId = values.plate_number;
 
-      // 1. Shaka plate_number nyayo muri motorcycles table
       if (selectedMotorcycleId) {
         const { data: motoData } = await supabase
           .from('motorcycles')
@@ -61,28 +58,41 @@ export function useTable(tableName, options = {}) {
         finalEmail = `${cleanPhone}@twarafleet.com`
       }
 
-      // 2. Rema account muri Supabase Auth
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: finalEmail,
-        password: values.password,
-        options: {
+      // 🔥 FIX NYAYO: Direct REST Fetch yirinda touch-ing Auth State ya Browser!
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({
+          email: finalEmail,
+          password: values.password,
           data: {
             full_name: values.full_name,
             role: 'driver',
             motorcycle_plate: actualPlateNumber
           }
-        }
+        })
       })
 
-      if (authErr) throw authErr
+      const authData = await response.json()
 
-      if (authData?.user) {
-        payload.auth_user_id = authData.user.id
+      if (!response.ok) {
+        throw new Error(authData.msg || authData.error_description || "Imbere mu kurema account habonetse ikosa.")
+      }
+
+      if (authData?.id || authData?.user?.id) {
+        const createdUserId = authData.id || authData.user.id
+        payload.auth_user_id = createdUserId
         payload.email = finalEmail
 
         // Gushyira amakuru muri public.users directly
         const { error: userErr } = await supabase.from('users').insert([{
-          auth_user_id: authData.user.id,
+          auth_user_id: createdUserId,
           email: finalEmail,
           role: 'driver', 
           full_name: values.full_name
@@ -92,20 +102,17 @@ export function useTable(tableName, options = {}) {
           await supabase
             .from('users')
             .update({ role: 'driver' })
-            .eq('auth_user_id', authData.user.id)
+            .eq('auth_user_id', createdUserId)
         }
       }
 
-      // 🚨 KOSORA HANO (THE FIX): Siba plate_number kuri payload kuko ntibaho muri table ya drivers!
-      // Ibi birakumira ririya kosa rya Schema cache bidasubirwaho.
       delete payload.plate_number;
+      delete payload.password;
       payload.owner_id = adminId;
 
-      // 3. Kubika amakuru muri public.drivers
       const { data: insertedDriver, error: err } = await supabase.from('drivers').insert([payload]).select().single()
       if (err) throw err
 
-      // 4. AUTOMATIC ASSIGNMENT: Komeka ya moto kuri uyu mu-driver muri driver_assignments table
       if (insertedDriver && selectedMotorcycleId) {
         await supabase.from('driver_assignments').insert([{
           owner_id: adminId, 
