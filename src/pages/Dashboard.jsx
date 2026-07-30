@@ -17,25 +17,6 @@ import { LoadingSpinner } from '../components/Feedback'
 import { formatRWF } from '../lib/format'
 import { supabase } from '../lib/supabaseClient'
 
-function StatTile({ icon: Icon, label, value, sub, tone }) {
-  const toneClass = { 
-    moto: 'text-moto-600 bg-moto-100 dark:bg-moto-950/50 dark:text-moto-400', 
-    cash: 'text-cash-600 bg-cash-200/80 dark:bg-cash-950/50 dark:text-cash-400', 
-    rust: 'text-rust-600 bg-rust-200/80 dark:bg-rust-950/50 dark:text-rust-400' 
-  }[tone] ?? 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
-  
-  return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">{label}</p>
-        <span className={`rounded-lg p-2 ${toneClass}`}><Icon size={16} /></span>
-      </div>
-      <p className="mt-2 font-display text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">{value}</p>
-      {sub && <p className="mt-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 truncate">{sub}</p>}
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const statsReturn = useDashboardStats()
   const data = statsReturn?.data
@@ -155,8 +136,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
-      {/* HEADER WITH OVERALL PENDING ACTION BADGE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      
+      {/* HEADER WITH TITLE & OVERALL PENDING ACTION BADGE */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div>
           <h1 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">Dashboard</h1>
           <p className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">Real-time snapshot across your fleet.</p>
@@ -170,15 +152,65 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 📊 CORE METRICS TILES (RESPONSIVE GRID FOR MOBILE) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile icon={Wallet} tone="moto" label="Collected today" value={formatRWF(data.collectedTotal)} sub={`${collectionRate}% of ${formatRWF(data.targetTotal)} target`} />
-        <StatTile icon={Bike} tone="moto" label="Active motorcycles" value={data.activeFleetCount} sub={`${data.motorcyclesReported}/${data.activeFleetCount} reported today`} />
-        <StatTile icon={AlertTriangle} tone="rust" label="Active debts" value={data.debtCount} sub={formatRWF(data.debtTotal) + ' outstanding'} />
-        <StatTile icon={TrendingUp} tone="cash" label="Fleet size" value={data.fleetCount} sub={data.statusBreakdown.filter(s => s.status !== 'active').map(s => `${s.count} ${s.status}`).join(' · ') || 'All active'} />
+      {/* 📊 COMBINED BIG METRICS CARD (ARRANGED AS CLEAN ROOMS/SECTIONS) */}
+      <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">Fleet Performance Overview</p>
+            <h2 className="font-display text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">Collections & Fleet Status</h2>
+          </div>
+          <span className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <TrendingUp size={24} />
+          </span>
+        </div>
+
+        {/* ARRANGED ROOMS GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Room 1: Collected Today */}
+          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+              <span>Collected Today</span>
+              <Wallet size={18} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+              {formatRWF(data.collectedTotal)}
+            </p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+              {collectionRate}% of {formatRWF(data.targetTotal)} target
+            </p>
+          </div>
+
+          {/* Room 2: Active Motorcycles */}
+          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+              <span>Active Motorcycles</span>
+              <Bike size={18} className="text-teal-600 dark:text-teal-400" />
+            </div>
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+              {data.activeFleetCount}
+            </p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+              {data.motorcyclesReported}/{data.activeFleetCount} reported today
+            </p>
+          </div>
+
+          {/* Room 3: Fleet Size */}
+          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+              <span>Total Fleet Size</span>
+              <Target size={18} className="text-sky-600 dark:text-sky-400" />
+            </div>
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+              {data.fleetCount}
+            </p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
+              {data.statusBreakdown.filter(s => s.status !== 'active').map(s => `${s.count} ${s.status}`).join(' · ') || 'All active'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE FLEX/GRID CARDS) */}
+      {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE CARDS) */}
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           
@@ -201,12 +233,13 @@ export default function Dashboard() {
           <Link to="/debts" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/20 hover:border-rose-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-rose-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><AlertTriangle size={20} /></div>
             <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Debts</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-rose-600 dark:text-rose-400 mt-1">{formatRWF(data.debtTotal)}</span>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-rose-600 dark:text-rose-400 mt-1">
+              {formatRWF(data.debtTotal)}
+            </span>
           </Link>
 
-          {/* 🟣 3. TRAFFIC FINES CARD (WITH RED UNPAID PULSING BADGE + PENDING APPROVAL BADGE) */}
+          {/* 🟣 3. TRAFFIC FINES CARD */}
           <Link to="/fines" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-violet-500/40 bg-violet-500/10 dark:bg-violet-950/20 hover:border-violet-500 transition-all shadow-sm relative">
-            {/* 🔴 RED PULSING BADGE FOR UNPAID/PENDING FINES */}
             {extraStats.finesStats.pendingCount > 0 && (
               <span className="absolute -top-2 -left-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -216,7 +249,6 @@ export default function Dashboard() {
               </span>
             )}
 
-            {/* 🟡 AMBER PENDING APPROVAL BADGE */}
             {pendingCounts.fines > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
