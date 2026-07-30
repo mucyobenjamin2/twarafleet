@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle, ShieldAlert, Send } from 'lucide-react';
+import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle, ShieldAlert, Send, AlertTriangle, Bike, X, MessageSquare } from 'lucide-react';
 
 import twaraLogo from '../assets/logo.png';
 
 export default function DriverDashboard() {
   const { profile, logout } = useAuth();
-  const [darkMode, setDarkMode] = useState(true);
-  const [activeTab, setActiveTab] = useState('versement');
+  const [darkMode, setDarkMode] = useState(false); // Defaulting clean mode display
+  const [activeModal, setActiveModal] = useState(null); // 'versement' | 'depense' | 'history' | 'contact_admin' | null
   const [metaPlate, setMetaPlate] = useState('N/A');
   
   // States za Traffic Fines
@@ -25,6 +25,9 @@ export default function DriverDashboard() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('fuel'); 
   const [reason, setReason] = useState('');
+
+  // States za Direct Admin Message
+  const [adminMessage, setAdminMessage] = useState('');
 
   // States z'amateka (History)
   const [historyItems, setHistoryItems] = useState([]);
@@ -47,14 +50,32 @@ export default function DriverDashboard() {
     { value: 'other', label: '📦 Ikindi Cyose (Other)' }
   ];
 
-  const fetchDriverFines = async (driverId) => {
+  const fetchDriverFines = async (driverId, plate) => {
     try {
-      const { data: finesData } = await supabase
+      let motoId = null;
+      if (plate && plate !== 'N/A') {
+        const { data: motoData } = await supabase
+          .from('motorcycles')
+          .select('id')
+          .eq('plate_number', plate)
+          .maybeSingle();
+        motoId = motoData?.id;
+      }
+
+      let query = supabase
         .from('fines')
         .select('*')
-        .eq('driver_id', driverId)
         .order('created_at', { ascending: false });
 
+      if (driverId && motoId) {
+        query = query.or(`driver_id.eq.${driverId},motorcycle_id.eq.${motoId}`);
+      } else if (driverId) {
+        query = query.eq('driver_id', driverId);
+      } else if (motoId) {
+        query = query.eq('motorcycle_id', motoId);
+      }
+
+      const { data: finesData } = await query;
       setFines(finesData || []);
     } catch (err) {
       console.error("Error fetching fines:", err.message);
@@ -64,55 +85,62 @@ export default function DriverDashboard() {
   useEffect(() => {
     async function getFreshMetadata() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.motorcycle_plate) {
-        setMetaPlate(user.user_metadata.motorcycle_plate);
-      } else if (profile?.motorcycle_plate) {
-        setMetaPlate(profile.motorcycle_plate);
-      }
+      if (!user) return;
 
-      // Load driver fines
+      let currentPlate = 'N/A';
+      if (user?.user_metadata?.motorcycle_plate) {
+        currentPlate = user.user_metadata.motorcycle_plate;
+      } else if (profile?.motorcycle_plate) {
+        currentPlate = profile.motorcycle_plate;
+      }
+      setMetaPlate(currentPlate);
+
       const { data: driverData } = await supabase
         .from('drivers')
         .select('id')
-        .eq('email', profile?.email)
-        .single();
+        .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle();
 
-      if (driverData) {
-        fetchDriverFines(driverData.id);
-      }
+      fetchDriverFines(driverData?.id, currentPlate);
     }
+
     getFreshMetadata();
   }, [profile]);
 
   const handleMarkFineAsPaid = async (fineId) => {
     try {
       setSubmitting(true);
+      setMsg({ type: '', text: '' });
+
+      const updatePayload = {
+        status: 'paid_by_driver'
+      };
+
+      if (momoRef.trim()) {
+        updatePayload.momo_ref = momoRef.trim();
+      }
+
       const { error } = await supabase
         .from('fines')
-        .update({
-          status: 'paid_by_driver',
-          momo_ref: momoRef || 'MoMo Direct'
-        })
+        .update(updatePayload)
         .eq('id', fineId);
 
-      if (!error) {
-        setPayingFineId(null);
-        setMomoRef('');
-        setMsg({ type: 'success', text: 'Ubwishyu bw\'amande bwamaze kumenyeshwa Admin! 🚦' });
-        
-        // Refresh fines list
-        const { data: driverData } = await supabase
-          .from('drivers')
-          .select('id')
-          .eq('email', profile?.email)
-          .single();
+      if (error) throw error;
 
-        if (driverData) fetchDriverFines(driverData.id);
-      } else {
-        throw error;
-      }
+      setPayingFineId(null);
+      setMomoRef('');
+      setMsg({ type: 'success', text: 'Ubwishyu bw\'amande bwamaze kumenyeshwa Admin neza! 🚦' });
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: driverData } = await supabase
+        .from('drivers')
+        .select('id')
+        .or(`auth_user_id.eq.${user?.id},email.eq.${user?.email}`)
+        .maybeSingle();
+
+      fetchDriverFines(driverData?.id, metaPlate);
     } catch (err) {
-      setMsg({ type: 'error', text: err.message || 'Harimo ikosa, ongera ugerageze.' });
+      setMsg({ type: 'error', text: 'Ikosa mu kubika ubwishyu: ' + err.message });
     } finally {
       setSubmitting(false);
     }
@@ -122,11 +150,12 @@ export default function DriverDashboard() {
     try {
       setLoadingHistory(true);
       
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: driverData } = await supabase
         .from('drivers')
         .select('id')
-        .eq('email', profile?.email)
-        .single();
+        .or(`auth_user_id.eq.${user?.id},email.eq.${user?.email}`)
+        .maybeSingle();
 
       if (!driverData) return;
 
@@ -171,10 +200,10 @@ export default function DriverDashboard() {
   };
 
   useEffect(() => {
-    if (activeTab === 'history') {
+    if (activeModal === 'history') {
       fetchDriverHistory();
     }
-  }, [activeTab]);
+  }, [activeModal]);
 
   const handleSubmitVersement = async (e) => {
     e.preventDefault();
@@ -196,10 +225,11 @@ export default function DriverDashboard() {
       setSubmitting(true);
       setMsg({ type: '', text: '' });
 
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: driverData, error: driverErr } = await supabase
         .from('drivers')
         .select('*')
-        .eq('email', profile?.email)
+        .or(`auth_user_id.eq.${user?.id},email.eq.${user?.email}`)
         .single();
 
       if (driverErr || !driverData) throw new Error("Umushoferi ntabwo abonetse muri sisitemu.");
@@ -360,10 +390,11 @@ export default function DriverDashboard() {
       setSubmitting(true);
       setMsg({ type: '', text: '' });
 
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: driverData, error: driverErr } = await supabase
         .from('drivers')
         .select('*')
-        .eq('email', profile?.email)
+        .or(`auth_user_id.eq.${user?.id},email.eq.${user?.email}`)
         .single();
 
       if (driverErr || !driverData) throw new Error("Umushoferi ntabwo abonetse muri sisitemu.");
@@ -411,239 +442,502 @@ export default function DriverDashboard() {
     }
   };
 
+  const handleSendAdminMessage = (e) => {
+    e.preventDefault();
+    if (!adminMessage.trim()) return;
+    alert("Ubumwa bwawe bwoherejwe kuri Admin neza! 📩");
+    setAdminMessage('');
+    setActiveModal(null);
+  };
+
   const unpaidFines = fines.filter(f => f.status !== 'approved');
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-200 ${darkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`min-h-screen font-sans transition-colors duration-200 ${darkMode ? 'bg-[#0f172a] text-slate-100' : 'bg-slate-100 text-slate-900'} relative pb-20`}>
       
-      <nav className={`border-b transition-colors duration-200 ${darkMode ? 'border-gray-800 bg-[#0f172a]' : 'border-gray-200 bg-white shadow-sm'}`}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#003d29]">
+      {/* NAVIGATION BAR */}
+      <nav className={`border-b transition-colors duration-200 ${darkMode ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-white shadow-sm'}`}>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-[#003d29] shadow-sm">
               <img src={twaraLogo} alt="TwaraFleet Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className={`text-lg font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+              <h1 className={`text-base font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                 {profile?.full_name || 'Umutari'}
               </h1>
-              <p className="text-xs text-emerald-400 font-mono font-bold tracking-wider uppercase bg-[#003d29]/20 px-2 py-0.5 rounded mt-0.5 inline-block">
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-black tracking-wider uppercase bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block">
                 PLATE: {metaPlate}
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-             <button onClick={() => setDarkMode(!darkMode)} className="text-gray-500 hover:text-[#003d29]">
-               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          <div className="flex items-center gap-2">
+             <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
              </button>
-             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${profile?.status === 'Active' ? 'bg-[#003d29]/10 text-[#003d29] dark:bg-[#003d29]/30 dark:text-emerald-400' : 'bg-gray-200 text-gray-600'}`}>
+             <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${profile?.status === 'Active' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' : 'bg-slate-200 text-slate-600'}`}>
                {profile?.status || 'Active'}
              </span>
-             <button onClick={logout} className="text-gray-500 hover:text-red-600"><LogOut size={20} /></button>
+             <button onClick={logout} className="p-2 rounded-xl text-slate-500 hover:text-rose-600 transition-colors"><LogOut size={18} /></button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      {/* MAIN CENTERED CONTAINER FOR MOBILE OPTIMIZATION */}
+      <main className="max-w-md mx-auto p-4 space-y-6 flex flex-col justify-center items-center">
 
-        {/* 🚨 TRAFFIC FINES NOTIFICATION SECTION */}
+        {/* 🚨 TRAFFIC FINES NOTIFICATION SECTION (HIGH CONTRAST LIGHT/DARK MODE) */}
         {unpaidFines.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-xs font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldAlert size={16} /> Traffic Fines Itarashyurwa ({unpaidFines.length})
-            </h2>
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[11px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                <ShieldAlert size={16} className="text-rose-600 dark:text-rose-400" /> Active Traffic Fines ({unpaidFines.length})
+              </h2>
+            </div>
 
-            {unpaidFines.map(fine => (
-              <div 
-                key={fine.id} 
-                className={`p-4 rounded-xl border transition ${
-                  fine.status === 'paid_by_driver'
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-200'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Ref: {fine.reference_number}</span>
-                    <p className="font-bold text-sm text-white mt-0.5">{fine.reason}</p>
+            {/* COMPACT HIGH-CONTRAST CARD LIST */}
+            <div className="flex flex-col gap-2.5 w-full">
+              {unpaidFines.map(fine => (
+                <div 
+                  key={fine.id} 
+                  className={`p-4 rounded-2xl border transition-all shadow-sm flex flex-col justify-between space-y-2.5 ${
+                    fine.status === 'paid_by_driver'
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-200'
+                      : 'bg-rose-500/10 border-rose-500/40 text-rose-900 dark:text-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="bg-rose-500/20 text-rose-900 dark:text-rose-200 text-[10px] font-mono font-black px-2.5 py-0.5 rounded border border-rose-500/30">
+                      REF: {fine.reference_number}
+                    </span>
+                    <span className="text-sm font-mono font-black text-rose-700 dark:text-rose-400">
+                      {Number(fine.amount).toLocaleString()} RWF
+                    </span>
                   </div>
-                  <span className="text-sm font-extrabold text-rose-400 font-mono">{Number(fine.amount).toLocaleString()} RWF</span>
-                </div>
 
-                {fine.status === 'paid_by_driver' ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300">
-                    <Clock size={14} className="animate-spin" />
-                    <span>Wamaze kumenyesha Admin. Itagereje kwemezwa...</span>
-                  </div>
-                ) : (
-                  <div className="mt-3 border-t border-rose-500/20 pt-3">
-                    {payingFineId === fine.id ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Injiza MoMo Trans Ref (Optionnel)"
-                          value={momoRef}
-                          onChange={e => setMomoRef(e.target.value)}
-                          className={`w-full border p-2 rounded-lg text-xs ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleMarkFineAsPaid(fine.id)}
-                            disabled={submitting}
-                            className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            <Send size={12} /> {submitting ? 'Kohereza...' : 'Emeza ko wayishyuye'}
-                          </button>
-                          <button
-                            onClick={() => setPayingFineId(null)}
-                            className="rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-400"
-                          >
-                            Siba
-                          </button>
-                        </div>
-                      </div>
+                  <p className="text-xs font-black text-slate-900 dark:text-slate-100">
+                    "{fine.reason}"
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-rose-500/20 text-[10px] font-mono font-bold">
+                    <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <Calendar size={12} /> Due: <strong className="text-rose-700 dark:text-rose-400 font-black">{fine.due_date || fine.issue_date || 'N/A'}</strong>
+                    </span>
+
+                    {fine.status === 'paid_by_driver' ? (
+                      <span className="text-amber-700 dark:text-amber-400 font-black flex items-center gap-1">
+                        <Clock size={12} className="animate-spin" /> Pending Approval
+                      </span>
                     ) : (
                       <button
                         onClick={() => setPayingFineId(fine.id)}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm"
+                        className="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black px-3 py-1 rounded-lg shadow-sm transition"
                       >
-                        <CheckCircle2 size={14} /> Naasoreye / Naayishyuye (Mark as Paid)
+                        Mark as Paid
                       </button>
                     )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className={`flex gap-6 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
-          {[ {id:'versement', label:'Versement', icon:DollarSign}, {id:'depense', label:'Depense', icon:Wrench}, {id:'history', label:'History', icon:History} ].map(tab => (
-            <button 
-              key={tab.id} 
-              type="button" 
-              onClick={(e) => { e.preventDefault(); setActiveTab(tab.id); setMsg({ type: '', text: '' }); }} 
-              className={`pb-3 text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === tab.id ? 'text-[#003d29] dark:text-emerald-400 border-b-2 border-[#003d29] dark:border-emerald-400 font-bold' : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'}`}
+        {/* 🎨 CENTERED HIGH CONTRAST ACTION CARDS (LIGHT AND DARK MODE COMPATIBLE) */}
+        <div className="w-full space-y-3">
+          <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-400 text-center">
+            Driver Action Services
+          </h2>
+
+          <div className="flex flex-col gap-3.5 w-full">
+            
+            {/* CARD 1: VERSEMENT (EMERALD GREEN) */}
+            <button
+              onClick={() => { setActiveModal('versement'); setMsg({ type: '', text: '' }); }}
+              className="w-full p-5 rounded-2xl border border-emerald-500/40 bg-white dark:bg-emerald-950/20 hover:border-emerald-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
             >
-              <tab.icon size={16} /> {tab.label}
+              <div className="flex items-center gap-4">
+                <span className="p-3 rounded-xl bg-emerald-600 text-white shadow-md group-hover:scale-110 transition-transform">
+                  <DollarSign size={22} />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-black text-slate-900 dark:text-slate-100">
+                    Kohereza Versement
+                  </h3>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Submit daily target collections.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">
+                Send
+              </span>
             </button>
-          ))}
+
+            {/* CARD 2: DEPENSE (WARM AMBER) */}
+            <button
+              onClick={() => { setActiveModal('depense'); setMsg({ type: '', text: '' }); }}
+              className="w-full p-5 rounded-2xl border border-amber-500/40 bg-white dark:bg-amber-950/20 hover:border-amber-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-4">
+                <span className="p-3 rounded-xl bg-amber-500 text-white shadow-md group-hover:scale-110 transition-transform">
+                  <Wrench size={22} />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-black text-slate-900 dark:text-slate-100">
+                    Gushyiramo Depense
+                  </h3>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Report maintenance & fuel costs.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-amber-800 dark:text-amber-300 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30">
+                Log
+              </span>
+            </button>
+
+            {/* CARD 3: HISTORY (SKY BLUE) */}
+            <button
+              onClick={() => { setActiveModal('history'); setMsg({ type: '', text: '' }); }}
+              className="w-full p-5 rounded-2xl border border-sky-500/40 bg-white dark:bg-sky-950/20 hover:border-sky-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-4">
+                <span className="p-3 rounded-xl bg-sky-600 text-white shadow-md group-hover:scale-110 transition-transform">
+                  <History size={22} />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-black text-slate-900 dark:text-slate-100">
+                    Amateka y'Ibyanditswe
+                  </h3>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    View payment ledger & statuses.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-sky-700 dark:text-sky-400 bg-sky-500/20 px-3 py-1 rounded-full border border-sky-500/30">
+                View
+              </span>
+            </button>
+
+          </div>
         </div>
 
-        <div className={`p-6 rounded-xl border transition-colors duration-200 ${darkMode ? 'bg-[#1e293b] border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-          
-          {msg.text && (
-            <div className={`p-4 mb-4 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-              {msg.text}
-            </div>
-          )}
-
-          {/* TAB 1: VERSEMENT */}
-          {activeTab === 'versement' && (
-            <form onSubmit={handleSubmitVersement} className="space-y-4">
-              <h2 className="text-base font-bold">Kohereza Versement</h2>
-              <input type="number" placeholder="Amafaranga (RWF) *" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              <input type="text" placeholder="Inimero / Trans ID (Reference Number) *" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              
-              <button type="submit" disabled={submitting} className="w-full bg-[#003d29] hover:bg-[#00291b] text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50">
-                {submitting ? 'Iri kohereza...' : 'Kohereza'}
-              </button>
-            </form>
-          )}
-          
-          {/* TAB 2: DEPENSE */}
-          {activeTab === 'depense' && (
-            <form onSubmit={handleSubmitExpense} className="space-y-4">
-              <h2 className="text-base font-bold">Gushyiramo Depense</h2>
-              
-              <input type="number" placeholder="Amafaranga (RWF) *" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-400">Guhitamo Ubwoko bwa Depense *</label>
-                <select 
-                  value={expenseCategory} 
-                  onChange={(e) => setExpenseCategory(e.target.value)} 
-                  className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value} className={darkMode ? 'bg-[#1e293b]' : 'bg-white'}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
+        {/* 📝 POPUP MODAL FOR FINE MOMO REF PROMPT */}
+        {payingFineId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-sm p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <ShieldAlert className="text-rose-600" size={18} /> Enter MoMo Ref Number
+                </h2>
+                <button onClick={() => setPayingFineId(null)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg">
+                  <X size={18} />
+                </button>
               </div>
 
-              <input type="text" placeholder="Ubusobanuro (Urugero: Gupfuka ipine ry'inyuma...) *" value={reason} onChange={(e) => setReason(e.target.value)} className={`w-full border p-3 rounded-lg text-sm ${darkMode ? 'bg-[#0f172a] border-gray-700 text-white border-gray-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
-              
-              <button type="submit" disabled={submitting} className="w-full bg-orange-700 hover:bg-orange-800 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
-                {submitting ? 'Iri kohereza...' : 'Kohereza Depense'}
-              </button>
-            </form>
-          )}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  Nyamuneka injiza inimero ya MoMo Reference wifuza kwemeza ko waresheje ku amande:
+                </p>
 
-          {/* TAB 3: HISTORY */}
-          {activeTab === 'history' && (
-            <div>
-              <h2 className="text-base font-bold mb-4 flex items-center gap-2">
-                <Calendar size={18} /> Amateka y'Ibyumweru 52 Bishize (Full Year)
-              </h2>
-              
-              {loadingHistory ? (
-                <div className="flex justify-center py-10">Iri gushaka amateka...</div>
-              ) : historyItems.length === 0 ? (
-                <div className="text-center text-gray-500 py-10">
-                  <p>Nta mateka y'ibikorwa yabonetse muri uyu mwaka.</p>
+                <input
+                  type="text"
+                  placeholder="Urugero: MP2026073000"
+                  value={momoRef}
+                  onChange={e => setMomoRef(e.target.value)}
+                  className="w-full border p-3 rounded-xl text-xs font-bold bg-slate-50 dark:bg-[#0f172a] border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
+                  required
+                />
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayingFineId(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Siba
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkFineAsPaid(payingFineId)}
+                    disabled={submitting}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-black text-white transition shadow-md flex items-center justify-center gap-1"
+                  >
+                    <Send size={12} /> {submitting ? 'Iri kohereza...' : 'Emeza Fine'}
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {historyItems.map((item) => {
-                    const isVersement = item.type === 'versement';
-                    const isApproved = item.status === 'paid' || item.status === 'approved';
-                    const isRejected = item.status === 'rejected';
+              </div>
+            </div>
+          </div>
+        )}
 
-                    return (
-                      <div key={`${item.type}-${item.id}`} className={`p-4 rounded-xl border flex justify-between items-center ${darkMode ? 'bg-[#0f172a] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${isVersement ? 'bg-emerald-500/10 text-emerald-400' : 'bg-orange-500/10 text-orange-400'}`}>
-                            {isVersement ? <DollarSign size={18} /> : <Wrench size={18} />}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">
-                              {isVersement ? `Versement Mobimoney` : `Depense [${item.category?.toUpperCase() || 'OTHER'}]: ${item.description}`}
-                            </p>
-                            <p className="text-xs text-gray-500 font-mono">
-                              {item.sortDate} {item.reference_number ? `· REF: ${item.reference_number}` : ''}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="text-right">
-                          <p className={`font-mono font-bold text-sm ${isVersement ? 'text-emerald-500' : 'text-orange-500'}`}>
-                            {isVersement ? `+` : `-`} {item.amount.toLocaleString()} RWF
-                          </p>
-                          
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1 mt-1 border ${
-                            isApproved
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                              : isRejected
-                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          }`}>
-                            {isApproved && <><CheckCircle2 size={11} /> Success</>}
-                            {isRejected && <><XCircle size={11} /> Rejected</>}
-                            {!isApproved && !isRejected && <><Clock size={11} /> Pending</>}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+        {/* 📝 MODAL POPUP DIALOG TABS */}
+        {activeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+              
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h2 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  {activeModal === 'versement' && <><DollarSign className="text-emerald-600" size={18} /> Kohereza Versement</>}
+                  {activeModal === 'depense' && <><Wrench className="text-amber-500" size={18} /> Gushyiramo Depense</>}
+                  {activeModal === 'history' && <><History className="text-sky-600" size={18} /> Amateka y'Ibyumweru 52 Bishize</>}
+                  {activeModal === 'contact_admin' && <><MessageSquare className="text-emerald-500" size={18} /> Vugana na Admin</>}
+                </h2>
+                <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {msg.text && (
+                <div className={`p-3.5 rounded-xl text-xs font-bold ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30'}`}>
+                  {msg.text}
                 </div>
               )}
+
+              {/* MODAL content 1: VERSEMENT FORM */}
+              {activeModal === 'versement' && (
+                <form onSubmit={handleSubmitVersement} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Amafaranga (RWF) *
+                    </label>
+                    <input 
+                      type="number" 
+                      placeholder="6000" 
+                      value={amount} 
+                      onChange={(e) => setAmount(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" 
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Itariki ya Payment *
+                    </label>
+                    <input 
+                      type="date" 
+                      value={date} 
+                      onChange={(e) => setDate(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" 
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Inimero / Trans ID (Reference Number) *
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="Urugero: MP2026073000" 
+                      value={transactionId} 
+                      onChange={(e) => setTransactionId(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" 
+                      required
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      Siba
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={submitting} 
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition disabled:opacity-50 shadow-md"
+                    >
+                      {submitting ? 'Iri kohereza...' : 'Kohereza Versement'}
+                    </button>
+                  </div>
+                </form>
+              )}
+              
+              {/* MODAL content 2: DEPENSE FORM */}
+              {activeModal === 'depense' && (
+                <form onSubmit={handleSubmitExpense} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Amafaranga (RWF) *
+                    </label>
+                    <input 
+                      type="number" 
+                      placeholder="15000" 
+                      value={expenseAmount} 
+                      onChange={(e) => setExpenseAmount(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500" 
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Guhitamo Ubwoko bwa Depense *
+                    </label>
+                    <select 
+                      value={expenseCategory} 
+                      onChange={(e) => setExpenseCategory(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Ubusobanuro *
+                    </label>
+                    <textarea 
+                      placeholder="Urugero: Gupfuka ipine ry'inyuma..." 
+                      value={reason} 
+                      onChange={(e) => setReason(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500" 
+                      rows={2}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      Siba
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={submitting} 
+                      className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition disabled:opacity-50 shadow-md"
+                    >
+                      {submitting ? 'Iri kohereza...' : 'Kohereza Depense'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* MODAL content 3: HISTORY LIST */}
+              {activeModal === 'history' && (
+                <div className="space-y-3">
+                  {loadingHistory ? (
+                    <div className="flex justify-center py-10 font-bold text-slate-600 dark:text-slate-400 animate-pulse">Iri gushaka amateka...</div>
+                  ) : historyItems.length === 0 ? (
+                    <div className="text-center font-bold text-slate-600 dark:text-slate-400 py-10">
+                      <p>Nta mateka y'ibikorwa yabonetse muri uyu mwaka. 🎉</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                      {historyItems.map((item) => {
+                        const isVersement = item.type === 'versement';
+                        const isApproved = item.status === 'paid' || item.status === 'approved';
+                        const isRejected = item.status === 'rejected';
+
+                        return (
+                          <div key={`${item.type}-${item.id}`} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0f172a] flex justify-between items-center shadow-sm">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`p-2 rounded-lg ${isVersement ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                                {isVersement ? <DollarSign size={16} /> : <Wrench size={16} />}
+                              </div>
+                              <div>
+                                <p className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate max-w-[150px]">
+                                  {isVersement ? `Versement` : `${item.category?.toUpperCase() || 'OTHER'}`}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-mono font-bold">
+                                  {item.sortDate}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="text-right">
+                              <p className={`font-mono font-black text-xs ${isVersement ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {isVersement ? `+` : `-`} {item.amount.toLocaleString()}
+                              </p>
+                              
+                              <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider inline-flex items-center gap-1 mt-0.5 border ${
+                                isApproved
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' 
+                                  : isRejected
+                                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                              }`}>
+                                {isApproved ? 'Paid' : isRejected ? 'Rejected' : 'Pending'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MODAL content 4: CONTACT ADMIN FORM */}
+              {activeModal === 'contact_admin' && (
+                <form onSubmit={handleSendAdminMessage} className="space-y-4">
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Niba ufite ikibazo cyangwa ubusobanuro ushaka kugeza kuri Admin, wandike ubumwa bwawe hano:
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
+                      Ubumwa bwawe (Message) *
+                    </label>
+                    <textarea 
+                      placeholder="Andika ubumwa cyangwa ikibazo hano..." 
+                      value={adminMessage} 
+                      onChange={(e) => setAdminMessage(e.target.value)} 
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" 
+                      rows={3}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      Siba
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-md flex items-center justify-center gap-1.5"
+                    >
+                      <Send size={14} /> Yohereza
+                    </button>
+                  </div>
+                </form>
+              )}
+
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
       </main>
+
+      {/* 🟢 FLOATING CONTACT ADMIN BUTTON */}
+      <div className="fixed bottom-5 right-5 z-40">
+        <button
+          onClick={() => { setActiveModal('contact_admin'); setMsg({ type: '', text: '' }); }}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 border-2 border-emerald-400"
+          title="Vugana na Admin"
+        >
+          <MessageSquare size={22} />
+          <span className="text-xs font-black hidden sm:inline pr-1">Contact Admin</span>
+        </button>
+      </div>
+
     </div>
   );
 }

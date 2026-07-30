@@ -1,7 +1,41 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatRWF, formatDate } from '../lib/format'
-import { Target, Bike, RefreshCw, User, Plus, Calendar } from 'lucide-react'
+import { Target, Bike, RefreshCw, User, Plus, Calendar, X, TrendingUp, TrendingDown } from 'lucide-react'
+
+// 🎨 Palette array y'amabara atandukanye y'amakarita ya Moto
+const MOTO_CARD_COLORS = [
+  {
+    bg: 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-950/20',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    badge: 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
+  },
+  {
+    bg: 'bg-indigo-500/10 border-indigo-500/30 dark:bg-indigo-950/20',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    badge: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-200 border-indigo-500/30'
+  },
+  {
+    bg: 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-950/20',
+    text: 'text-amber-600 dark:text-amber-400',
+    badge: 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/30'
+  },
+  {
+    bg: 'bg-violet-500/10 border-violet-500/30 dark:bg-violet-950/20',
+    text: 'text-violet-600 dark:text-violet-400',
+    badge: 'bg-violet-500/20 text-violet-800 dark:text-violet-200 border-violet-500/30'
+  },
+  {
+    bg: 'bg-sky-500/10 border-sky-500/30 dark:bg-sky-950/20',
+    text: 'text-sky-600 dark:text-sky-400',
+    badge: 'bg-sky-500/20 text-sky-800 dark:text-sky-200 border-sky-500/30'
+  },
+  {
+    bg: 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/20',
+    text: 'text-rose-600 dark:text-rose-400',
+    badge: 'bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-500/30'
+  }
+]
 
 export default function SavingsGoals() {
   const [loading, setLoading] = useState(true)
@@ -20,7 +54,8 @@ export default function SavingsGoals() {
   const [fleetGoalDesc, setFleetGoalDesc] = useState('')
   const [fleetTargetDate, setFleetTargetDate] = useState('')
   
-  // 📝 Form Input States
+  // 📝 Modal State & Form Input States
+  const [showGoalModal, setShowGoalModal] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [descInput, setDescInput] = useState('')
   const [goalInput, setGoalInput] = useState('')
@@ -77,6 +112,12 @@ export default function SavingsGoals() {
         setFleetGoalTitle(dbGoals.goal_name || dbGoals.title || dbGoals.name || 'Fleet Savings Milestone')
         setFleetGoalDesc(dbGoals.description || '')
         setFleetTargetDate(dbGoals.target_date || '')
+
+        // Populate modal inputs
+        setTitleInput(dbGoals.goal_name || dbGoals.title || dbGoals.name || '')
+        setDescInput(dbGoals.description || '')
+        setGoalInput(dbGoals.target_amount || '')
+        setDateInput(dbGoals.target_date || '')
       } else {
         setFleetGoalId(null)
         setFleetGoalAmount(0)
@@ -105,13 +146,14 @@ export default function SavingsGoals() {
         ).reduce((acc, curr) => acc + curr.amount, 0) || 0
 
         const motoExp = expenses?.filter(e => e.motorcycle_id === moto.id).reduce((acc, curr) => acc + curr.amount, 0) || 0
+        const netTotal = motoPaid - motoExp
 
         return {
           plate: moto.plate_number,
           driver: driverName,
           grossPaid: motoPaid,
           expensesDeducted: motoExp,
-          netTotal: motoPaid - motoExp
+          netTotal
         }
       }) || []
 
@@ -127,7 +169,7 @@ export default function SavingsGoals() {
     loadSavingsGoalsCorePipeline()
   }, [])
 
-  // 🛠️ SUBMIT NEW FLEET GOAL NYAYO
+  // 🛠️ SUBMIT NEW FLEET GOAL IN MODAL
   const handleCreateFleetGoal = async (e) => {
     e.preventDefault()
     if (!titleInput || !goalInput || isNaN(goalInput) || parseFloat(goalInput) <= 0) {
@@ -165,10 +207,7 @@ export default function SavingsGoals() {
 
       if (error) throw error
       alert('Intego yaguzwe neza mu bitabo! 🎯')
-      setTitleInput('')
-      setDescInput('')
-      setGoalInput('')
-      setDateInput('')
+      setShowGoalModal(false)
       await loadSavingsGoalsCorePipeline()
     } catch (err) {
       alert('Habonetse ikosa: ' + err.message)
@@ -178,7 +217,7 @@ export default function SavingsGoals() {
   }
 
   if (loading) {
-    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gushaka imibare n'intego z'ubwizingame...</div>
+    return <div className="p-6 text-center text-sm font-bold text-ink-soft animate-pulse">Iri gushaka imibare n'intego z'ubwizigame...</div>
   }
 
   const goalProgressPercentage = fleetGoalAmount > 0
@@ -186,154 +225,213 @@ export default function SavingsGoals() {
     : 0
 
   return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
+      {/* HEADER WITH ADD/UPDATE GOAL BUTTON */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-ink">Fleet Financial Savings Goals</h1>
-          <p className="text-sm text-ink-soft">Equation layout: Total Collected - Total Expenses = Net Fleet Balance.</p>
+          <h1 className="font-display text-2xl font-black text-ink flex items-center gap-2">
+            <Target className="text-teal-600 dark:text-teal-400" size={28} /> Fleet Financial Savings Goals
+          </h1>
+          <p className="text-sm font-bold text-ink-soft">Total Collected - Total Expenses = Net Fleet Balance.</p>
         </div>
-        <button onClick={loadSavingsGoalsCorePipeline} className="p-2 border border-line rounded-lg text-ink-soft hover:text-ink bg-paper transition-colors">
-          <RefreshCw size={16} />
-        </button>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setShowGoalModal(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md transition whitespace-nowrap"
+          >
+            <Plus size={18} /> {fleetGoalAmount > 0 ? 'Update Goal' : 'Add New Goal'}
+          </button>
+
+          <button onClick={loadSavingsGoalsCorePipeline} className="p-2.5 border border-line rounded-xl text-ink-soft hover:text-ink bg-paper transition-colors shadow-sm">
+            <RefreshCw size={18} />
+          </button>
+        </div>
       </div>
 
-      {/* 📊 INDIKATOR I: THE FINANCIAL EQUATION WIDGETS */}
+      {/* 📊 FINANCIAL EQUATION CARDS */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-line bg-paper-raised p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Total Collected Amount</p>
-          <p className="mt-2 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatRWF(globalCollected)}</p>
+        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-wide text-ink-soft">Total Collected Amount</p>
+          <p className="mt-2 font-display text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatRWF(globalCollected)}</p>
         </div>
-        <div className="rounded-2xl border border-line bg-paper-raised p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Total Expenses Deducted</p>
-          <p className="mt-2 font-display text-2xl font-bold text-rose-500">-{formatRWF(globalExpenses)}</p>
+        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-wide text-ink-soft">Total Expenses Deducted</p>
+          <p className="mt-2 font-display text-2xl font-black text-rose-600 dark:text-rose-400">-{formatRWF(globalExpenses)}</p>
         </div>
-        <div className="rounded-2xl border-2 border-moto-500/30 bg-paper-raised p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-moto-500">Total Net Amount (Fleet Total)</p>
-          <p className="mt-2 font-display text-2xl font-black text-ink">{formatRWF(globalNetTotal)}</p>
+        <div className="rounded-2xl border-2 border-teal-500/40 bg-teal-500/10 dark:bg-teal-950/20 p-5 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-wide text-teal-700 dark:text-teal-400">Total Net Amount (Fleet Savings)</p>
+          <p className="mt-2 font-display text-2xl font-black text-teal-600 dark:text-teal-400">{formatRWF(globalNetTotal)}</p>
         </div>
       </div>
 
-      {/* 🎯 INDIKATOR II: ACTIVE GOAL PROGRESS DISPLAY */}
+      {/* 🎯 ACTIVE GOAL PROGRESS DISPLAY */}
       {fleetGoalAmount > 0 && (
-        <div className="rounded-2xl border border-line bg-paper-raised p-6 space-y-4">
+        <div className="rounded-2xl border border-line bg-paper-raised p-6 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-moto-500 uppercase tracking-wider flex items-center gap-1.5"><Target size={15} /> Active Goal Overview</span>
-              <h3 className="font-display text-xl font-bold text-ink mt-1">{fleetGoalTitle}</h3>
-              {fleetGoalDesc && <p className="text-xs text-ink-soft max-w-xl mt-1">{fleetGoalDesc}</p>}
+              <span className="text-xs font-black text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Target size={15} /> Active Goal Overview
+              </span>
+              <h3 className="font-display text-xl font-black text-ink mt-1">{fleetGoalTitle}</h3>
+              {fleetGoalDesc && <p className="text-xs font-bold text-ink-soft max-w-xl mt-1">{fleetGoalDesc}</p>}
               {fleetTargetDate && (
-                <p className="text-xs text-ink-soft flex items-center gap-1 font-mono mt-1.5">
-                  <Calendar size={13} className="text-moto-500" /> Target Date: {formatDate(fleetTargetDate)}
+                <p className="text-xs font-bold text-ink-soft flex items-center gap-1 font-mono mt-1.5">
+                  <Calendar size={13} className="text-teal-600 dark:text-teal-400" /> Target Date: {formatDate(fleetTargetDate)}
                 </p>
               )}
             </div>
             <div className="text-right whitespace-nowrap">
-              <p className="text-xs text-ink-soft">Target Amount</p>
-              <p className="font-display text-xl font-extrabold text-ink">{formatRWF(fleetGoalAmount)}</p>
-              <p className="text-2xl font-mono font-black text-moto-500 mt-1">{goalProgressPercentage}%</p>
+              <p className="text-xs font-bold text-ink-soft">Target Amount</p>
+              <p className="font-display text-xl font-black text-ink">{formatRWF(fleetGoalAmount)}</p>
+              <p className="text-2xl font-mono font-black text-teal-600 dark:text-teal-400 mt-1">{goalProgressPercentage}%</p>
             </div>
           </div>
+
           <div className="w-full bg-paper rounded-full h-3 border border-line overflow-hidden p-0.5">
-            <div className="bg-gradient-to-r from-moto-500 to-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${goalProgressPercentage}%` }}></div>
+            <div className="bg-teal-600 dark:bg-teal-500 h-full rounded-full transition-all duration-500" style={{ width: `${goalProgressPercentage}%` }}></div>
           </div>
         </div>
       )}
 
-      {/* ➕ INDIKATOR III: CREATE NEW GOAL */}
-      <div className="rounded-2xl border border-line bg-paper-raised p-5 space-y-4">
-        <div className="flex items-center gap-2 border-b border-line pb-2">
-          <Plus size={16} className="text-moto-500" />
-          <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">Configure Fleet Goal Target</h2>
+      {/* 🏍️ COLORFUL MOTORCYCLES PERFORMANCE MATRIX */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-black uppercase tracking-wider text-ink flex items-center gap-2">
+            <Bike size={16} className="text-teal-600 dark:text-teal-400" /> Motorcycles Net Performance ({motorcycles.length})
+          </h2>
         </div>
-        
-        <form onSubmit={handleCreateFleetGoal} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div className="space-y-1 w-full">
-            <label className="text-[11px] font-bold uppercase text-ink-soft">Goal Name / Title *</label>
-            <input 
-              type="text" 
-              placeholder="Umutwe w'intego..." 
-              value={titleInput} 
-              onChange={(e) => setTitleInput(e.target.value)}
-              className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
-            />
-          </div>
 
-          <div className="space-y-1 w-full">
-            <label className="text-[11px] font-bold uppercase text-ink-soft">Description / Notes</label>
-            <input 
-              type="text" 
-              placeholder="Gusobanura muri make..." 
-              value={descInput} 
-              onChange={(e) => setDescInput(e.target.value)}
-              className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
-            />
-          </div>
+        {/* COLORFUL COMPACT CARDS GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {motorcycles.map((row, idx) => {
+            const theme = MOTO_CARD_COLORS[idx % MOTO_CARD_COLORS.length]
+            return (
+              <div 
+                key={idx} 
+                className={`p-4 rounded-2xl border transition-all shadow-sm space-y-3 hover:scale-105 ${theme.bg}`}
+              >
+                {/* Header: Plate & Driver */}
+                <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2">
+                  <span className={`plate text-xs font-mono font-black border px-2.5 py-0.5 rounded uppercase ${theme.badge}`}>
+                    {row.plate}
+                  </span>
+                  <span className="text-[11px] font-black text-ink flex items-center gap-1 truncate max-w-[120px]">
+                    <User size={12} className="opacity-70" /> {row.driver}
+                  </span>
+                </div>
 
-          <div className="space-y-1 w-full">
-            <label className="text-[11px] font-bold uppercase text-ink-soft">Target Amount (RWF) *</label>
-            <input 
-              type="number" 
-              placeholder="Mfano: 5000000" 
-              value={goalInput} 
-              onChange={(e) => setGoalInput(e.target.value)}
-              className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
-            />
-          </div>
+                {/* Net Balance (Highlight Color) */}
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-ink-soft">Net Balance</p>
+                  <p className={`text-xl font-mono font-black mt-0.5 ${theme.text}`}>
+                    {formatRWF(row.netTotal)}
+                  </p>
+                </div>
 
-          <div className="space-y-1 w-full">
-            <label className="text-[11px] font-bold uppercase text-ink-soft">Target Date (Deadline) *</label>
-            <input 
-              type="date" 
-              value={dateInput} 
-              onChange={(e) => setDateInput(e.target.value)}
-              className="p-2 text-sm rounded-lg border border-line bg-paper text-ink focus:outline-none w-full h-[38px]" 
-            />
-          </div>
-
-          <div className="lg:col-span-4 flex justify-end mt-2">
-            <button 
-              type="submit" 
-              disabled={submitting}
-              className="bg-moto-500 hover:bg-moto-600 text-white px-6 py-2 rounded-lg text-xs font-bold h-[38px] transition-colors w-full sm:w-auto"
-            >
-              {submitting ? 'Iri kubika...' : fleetGoalAmount > 0 ? 'Update Active Goal' : 'Save New Goal'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* 🏍️ INDIKATOR IV: MOTORCYCLES PERFORMANCE TABLE */}
-      <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 border-b border-line pb-2">
-          <Bike size={18} className="text-moto-500" />
-          <h2 className="font-display text-sm font-bold text-ink uppercase tracking-wide">Motorcycles Performance Matrix</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-line text-xs font-bold uppercase tracking-wider text-ink-soft bg-paper">
-                <th className="p-3">Plate Number</th>
-                <th className="p-3">Driver</th>
-                <th className="p-3">Total Versement</th>
-                <th className="p-3">Total Expenses</th>
-                <th className="p-3 text-right">Main Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line text-sm text-ink">
-              {motorcycles.map((row, idx) => (
-                <tr key={idx} className="hover:bg-paper/40 transition-colors">
-                  <td className="p-3"><span className="plate text-[10px] font-mono">{row.plate}</span></td>
-                  <td className="p-3 text-xs font-medium text-ink-soft flex items-center gap-1"><User size={12} /> {row.driver}</td>
-                  <td className="p-3 font-mono text-emerald-600">+{formatRWF(row.grossPaid)}</td>
-                  <td className="p-3 font-mono text-rose-500">-{formatRWF(row.expensesDeducted)}</td>
-                  <td className="p-3 text-right font-mono font-bold text-ink">{formatRWF(row.netTotal)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                {/* Breakdown Rows: Gross Paid vs Expenses */}
+                <div className="pt-1.5 border-t border-black/10 dark:border-white/10 flex justify-between text-[11px] font-mono font-bold">
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <TrendingUp size={12} /> +{formatRWF(row.grossPaid)}
+                  </span>
+                  <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                    <TrendingDown size={12} /> -{formatRWF(row.expensesDeducted)}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
+
+      {/* 📝 MODAL POPUP FOR CONFIGURE FLEET GOAL */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-paper rounded-2xl border border-line w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h2 className="text-lg font-black text-ink flex items-center gap-2">
+                <Target className="text-teal-600 dark:text-teal-400" size={20} /> Configure Fleet Goal Target
+              </h2>
+              <button onClick={() => setShowGoalModal(false)} className="text-ink-soft hover:text-ink">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFleetGoal} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black uppercase text-ink-soft mb-1">
+                  Goal Name / Title *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Urugero: Kwishyura Moto Nshya"
+                  value={titleInput}
+                  onChange={e => setTitleInput(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-teal-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-ink-soft mb-1">
+                  Target Amount (RWF) *
+                </label>
+                <input
+                  type="number"
+                  placeholder="5000000"
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-teal-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-ink-soft mb-1">
+                  Target Date (Deadline) *
+                </label>
+                <input
+                  type="date"
+                  value={dateInput}
+                  onChange={e => setDateInput(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-teal-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-ink-soft mb-1">
+                  Description / Notes (Optionnel)
+                </label>
+                <textarea
+                  placeholder="Gusobanura muri make..."
+                  value={descInput}
+                  onChange={e => setDescInput(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-teal-500"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoalModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-line font-bold text-ink-soft hover:bg-paper-raised transition"
+                >
+                  Siba
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 font-bold text-white hover:bg-teal-700 transition disabled:opacity-50"
+                >
+                  {submitting ? 'Iri kubika...' : fleetGoalAmount > 0 ? 'Update Goal' : 'Save Goal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

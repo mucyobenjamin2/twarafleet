@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatRWF, formatDate } from '../lib/format'
-import { AlertTriangle, CheckCircle, Trash2, ShieldAlert, TrendingUp, DollarSign } from 'lucide-react'
+import { AlertTriangle, CheckCircle, ShieldAlert, TrendingUp, DollarSign, Search, RefreshCw } from 'lucide-react'
 
 export default function Debts() {
   const [debts, setDebts] = useState([])
@@ -122,7 +122,7 @@ export default function Debts() {
     }
   }
 
-  // 🔥 FIX NYAYO: Yungurura hano akoresheje lowercase ngo status zose zihure 100%!
+  // 🔥 Yungurura hano akoresheje lowercase ngo status zose zihure 100%!
   const filteredDebts = debts.filter(d => {
     const currentDebtStatus = (d.status || '').toLowerCase().trim()
     const currentFilterStatus = (filterStatus || '').toLowerCase().trim()
@@ -136,62 +136,78 @@ export default function Debts() {
   })
 
   if (loading) {
-    return <div className="p-6 text-center text-sm text-ink-soft animate-pulse">Iri gushaka ibitabo by'amadeni...</div>
+    return <div className="p-6 text-center text-sm font-bold text-ink-soft animate-pulse">Iri gushaka ibitabo by'amadeni...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-ink">Debts Ledger</h1>
-        <p className="text-sm text-ink-soft">Manage active balances and verify automatic deficits.</p>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
+      {/* 🚀 HEADER WITH BRANDING & REFRESH */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-black text-ink flex items-center gap-2">
+            <AlertTriangle className="text-rose-600 dark:text-rose-500" size={28} /> Debts Ledger
+          </h1>
+          <p className="text-sm font-bold text-ink-soft">Manage active balances and verify automatic deficits.</p>
+        </div>
+
+        <button onClick={loadDebts} className="p-2.5 border border-line rounded-xl text-ink-soft hover:text-ink bg-paper transition-colors shadow-sm">
+          <RefreshCw size={18} />
+        </button>
       </div>
 
-      {/* 📊 STATS TILES */}
+      {/* 📊 STATS TILES (HIGH CONTRAST & ADAPTIVE THEME) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Total Active Debts</p>
-            <span className="rounded-lg p-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"><AlertTriangle size={16} /></span>
+            <p className="text-xs font-black uppercase tracking-wide text-ink-soft">Total Active Debts</p>
+            <span className="rounded-lg p-1.5 bg-rose-500/10 text-rose-600 dark:text-rose-400"><AlertTriangle size={16} /></span>
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-rose-600 dark:text-rose-400">{formatRWF(totals.active)}</p>
-          <p className="mt-0.5 text-xs text-ink-soft">Outstanding money in the field.</p>
+          <p className="mt-2 font-display text-2xl font-black text-rose-600 dark:text-rose-400">{formatRWF(totals.active)}</p>
+          <p className="mt-0.5 text-xs font-bold text-ink-soft">Outstanding money in the field.</p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Recovered via Versement</p>
-            <span className="rounded-lg p-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"><TrendingUp size={16} /></span>
+            <p className="text-xs font-black uppercase tracking-wide text-ink-soft">Recovered via Versement</p>
+            <span className="rounded-lg p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><TrendingUp size={16} /></span>
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatRWF(totals.paid)}</p>
-          <p className="mt-0.5 text-xs text-ink-soft">Successfully cleared back tax.</p>
+          <p className="mt-2 font-display text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatRWF(totals.paid)}</p>
+          <p className="mt-0.5 text-xs font-bold text-ink-soft">Successfully cleared back tax.</p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-paper-raised p-5">
+        <div className="rounded-2xl border border-line bg-paper-raised p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Total Waived (Amababarirano)</p>
-            <span className="rounded-lg p-1.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"><DollarSign size={16} /></span>
+            <p className="text-xs font-black uppercase tracking-wide text-ink-soft">Total Waived (Amababarirano)</p>
+            <span className="rounded-lg p-1.5 bg-slate-500/10 text-slate-600 dark:text-slate-400"><DollarSign size={16} /></span>
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-slate-700 dark:text-slate-300">{formatRWF(totals.waived)}</p>
-          <p className="mt-0.5 text-xs text-ink-soft">Debts forgiven manually by owner.</p>
+          <p className="mt-2 font-display text-2xl font-black text-ink">{formatRWF(totals.waived)}</p>
+          <p className="mt-0.5 text-xs font-bold text-ink-soft">Debts forgiven manually by owner.</p>
         </div>
       </div>
 
       {/* 🔍 FILTERS BAR */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-paper p-4 rounded-xl border border-line">
-        <input 
-          type="text" 
-          placeholder="Shakisha umu-driver cyangwa plate..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-72 p-2 rounded-lg border border-line bg-paper-raised text-sm text-ink focus:outline-none"
-        />
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-paper p-4 rounded-2xl border border-line shadow-sm">
+        <div className="relative w-full sm:w-72">
+          <Search size={18} className="absolute left-3.5 top-2.5 text-ink-soft" />
+          <input 
+            type="text" 
+            placeholder="Shakisha umu-driver cyangwa plate..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-rose-500"
+          />
+        </div>
         
-        <div className="flex items-center gap-1.5 border border-line rounded-lg p-1 bg-paper-raised">
+        <div className="flex items-center gap-1.5 border border-line rounded-xl p-1 bg-paper-raised w-full sm:w-auto justify-center">
           {['active', 'paid', 'waived', 'all'].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors ${filterStatus.toLowerCase() === status.toLowerCase() ? 'bg-moto-500 text-white shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+              className={`px-3 py-1 text-xs font-black rounded-lg capitalize transition-colors ${
+                filterStatus.toLowerCase() === status.toLowerCase() 
+                  ? 'bg-rose-600 text-white shadow-sm' 
+                  : 'text-ink-soft hover:text-ink'
+              }`}
             >
               {status}
             </button>
@@ -200,11 +216,17 @@ export default function Debts() {
       </div>
 
       {/* 📋 LEDGER TABLE */}
-      <div className="rounded-2xl border border-line bg-paper-raised overflow-hidden">
+      <div className="rounded-2xl border border-line bg-paper-raised overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-line bg-paper flex items-center justify-between">
+          <h2 className="font-display text-sm font-black text-ink uppercase tracking-wide flex items-center gap-2">
+            <AlertTriangle size={16} className="text-rose-500" /> Outstanding Debts Register ({filteredDebts.length})
+          </h2>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-line bg-paper text-xs font-bold uppercase tracking-wider text-ink-soft">
+              <tr className="border-b border-line bg-paper text-xs font-black uppercase tracking-wider text-ink-soft">
                 <th className="p-4">Motorcycle</th>
                 <th className="p-4">Driver</th>
                 <th className="p-4">Debt Date</th>
@@ -214,28 +236,32 @@ export default function Debts() {
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line text-sm text-ink">
+            <tbody className="divide-y divide-line text-sm">
               {filteredDebts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-ink-soft">Nta madeni active cyangwa ayandi ahuye n'iyi filter yabonetse.</td>
+                  <td colSpan="7" className="p-8 text-center font-bold text-ink-soft">Nta madeni active cyangwa ayandi ahuye n'iyi filter yabonetse. 🎉</td>
                 </tr>
               ) : (
                 filteredDebts.map((d) => (
                   <tr key={d.id} className="hover:bg-paper/40 transition-colors">
                     <td className="p-4">
-                      <span className="plate text-[11px] font-mono">{d.motorcycles?.plate_number || '—'}</span>
+                      <span className="plate text-xs font-mono font-black border border-line bg-paper px-2.5 py-1 rounded">
+                        {d.motorcycles?.plate_number || '—'}
+                      </span>
                     </td>
-                    <td className="p-4 font-semibold">{d.drivers?.full_name || 'Unknown Driver'}</td>
-                    <td className="p-4 font-mono text-xs">{formatDate(d.debt_date)}</td>
-                    <td className="p-4 font-mono text-ink-soft">{formatRWF(d.original_amount)}</td>
-                    <td className="p-4 font-mono font-bold text-rose-600 dark:text-rose-400">
+                    <td className="p-4 font-black text-ink">{d.drivers?.full_name || 'Unknown Driver'}</td>
+                    <td className="p-4 font-mono font-bold text-ink-soft text-xs">{formatDate(d.debt_date)}</td>
+                    <td className="p-4 font-mono font-bold text-ink-soft">{formatRWF(d.original_amount)}</td>
+                    <td className="p-4 font-mono font-black text-rose-600 dark:text-rose-400">
                       {d.remaining_amount > 0 ? formatRWF(d.remaining_amount) : '—'}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        (d.status || '').toLowerCase() === 'active' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' :
-                        (d.status || '').toLowerCase() === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
-                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        (d.status || '').toLowerCase() === 'active' 
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30' 
+                          : (d.status || '').toLowerCase() === 'paid' 
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' 
+                          : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/30'
                       }`}>
                         {d.status}
                       </span>
@@ -245,13 +271,13 @@ export default function Debts() {
                         <>
                           <button 
                             onClick={() => handleClearDebt(d)}
-                            className="flex items-center gap-1 rounded bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white shadow-sm transition-all"
+                            className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-black text-white shadow-sm transition-all"
                           >
                             <CheckCircle size={13} /> Pay Debt
                           </button>
                           <button 
                             onClick={() => handleWaiveDebt(d.id)}
-                            className="flex items-center gap-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-gray-200 px-2.5 py-1 text-xs font-medium transition-all"
+                            className="flex items-center gap-1 rounded-lg bg-paper border border-line hover:bg-paper-raised text-ink-soft hover:text-ink px-3 py-1.5 text-xs font-black transition-all"
                           >
                             Waive
                           </button>
