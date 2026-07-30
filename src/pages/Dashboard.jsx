@@ -22,16 +22,16 @@ function StatTile({ icon: Icon, label, value, sub, tone }) {
     moto: 'text-moto-600 bg-moto-100 dark:bg-moto-950/50 dark:text-moto-400', 
     cash: 'text-cash-600 bg-cash-200/80 dark:bg-cash-950/50 dark:text-cash-400', 
     rust: 'text-rust-600 bg-rust-200/80 dark:bg-rust-950/50 dark:text-rust-400' 
-  }[tone] ?? 'text-ink-soft bg-paper'
+  }[tone] ?? 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
   
   return (
-    <div className="rounded-2xl border border-line bg-paper-raised p-4">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{label}</p>
+        <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">{label}</p>
         <span className={`rounded-lg p-2 ${toneClass}`}><Icon size={16} /></span>
       </div>
-      <p className="mt-2 font-display text-2xl font-bold text-ink">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-ink-soft">{sub}</p>}
+      <p className="mt-2 font-display text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">{value}</p>
+      {sub && <p className="mt-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 truncate">{sub}</p>}
     </div>
   )
 }
@@ -154,36 +154,36 @@ export default function Dashboard() {
   const totalActionPending = pendingCounts.versements + pendingCounts.expenses + pendingCounts.fines
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
       {/* HEADER WITH OVERALL PENDING ACTION BADGE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-soft">Real-time snapshot across your fleet.</p>
+          <h1 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <p className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">Real-time snapshot across your fleet.</p>
         </div>
         
         {totalActionPending > 0 && (
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-xl text-xs font-bold animate-pulse">
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 px-3.5 py-2 rounded-xl text-xs font-black animate-pulse self-start sm:self-auto">
             <Clock size={14} />
             <span>Actions Pending Approval: {totalActionPending}</span>
           </div>
         )}
       </div>
 
-      {/* 📊 CORE METRICS TILES */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* 📊 CORE METRICS TILES (RESPONSIVE GRID FOR MOBILE) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile icon={Wallet} tone="moto" label="Collected today" value={formatRWF(data.collectedTotal)} sub={`${collectionRate}% of ${formatRWF(data.targetTotal)} target`} />
         <StatTile icon={Bike} tone="moto" label="Active motorcycles" value={data.activeFleetCount} sub={`${data.motorcyclesReported}/${data.activeFleetCount} reported today`} />
         <StatTile icon={AlertTriangle} tone="rust" label="Active debts" value={data.debtCount} sub={formatRWF(data.debtTotal) + ' outstanding'} />
         <StatTile icon={TrendingUp} tone="cash" label="Fleet size" value={data.fleetCount} sub={data.statusBreakdown.filter(s => s.status !== 'active').map(s => `${s.count} ${s.status}`).join(' · ') || 'All active'} />
       </div>
 
-      {/* 📂 HIGH CONTRAST CHANNELS (CARDS WITH PULSE ANIMATED BADGES) */}
+      {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE FLEX/GRID CARDS) */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           
           {/* 🟢 1. COLLECTIONS CARD */}
-          <Link to="/collections" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-500/20 bg-emerald-50/70 dark:bg-emerald-950/10 hover:border-emerald-500 hover:bg-emerald-500/[0.12] transition-all shadow-sm relative">
+          <Link to="/collections" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/20 hover:border-emerald-500 transition-all shadow-sm relative">
             {pendingCounts.versements > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -192,20 +192,31 @@ export default function Dashboard() {
                 </span>
               </span>
             )}
-            <div className="rounded-2xl p-4 bg-emerald-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><Wallet size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Collections</h4>
-            <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 mt-1">{formatRWF(data.collectedTotal)}</span>
+            <div className="rounded-2xl p-3 sm:p-4 bg-emerald-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Wallet size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Collections</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-emerald-600 dark:text-emerald-400 mt-1">{formatRWF(data.collectedTotal)}</span>
           </Link>
 
           {/* 🔴 2. DEBTS CARD */}
-          <Link to="/debts" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-rose-500/30 dark:border-rose-500/20 bg-rose-50/70 dark:bg-rose-950/10 hover:border-rose-500 hover:bg-rose-500/[0.12] transition-all shadow-sm">
-            <div className="rounded-2xl p-4 bg-rose-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><AlertTriangle size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Debts</h4>
-            <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 mt-1">{formatRWF(data.debtTotal)}</span>
+          <Link to="/debts" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/20 hover:border-rose-500 transition-all shadow-sm">
+            <div className="rounded-2xl p-3 sm:p-4 bg-rose-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><AlertTriangle size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Debts</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-rose-600 dark:text-rose-400 mt-1">{formatRWF(data.debtTotal)}</span>
           </Link>
 
-          {/* 🟣 3. TRAFFIC FINES CARD */}
-          <Link to="/fines" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-violet-500/30 dark:border-violet-500/20 bg-violet-50/70 dark:bg-violet-950/10 hover:border-violet-500 hover:bg-violet-500/[0.12] transition-all shadow-sm relative">
+          {/* 🟣 3. TRAFFIC FINES CARD (WITH RED UNPAID PULSING BADGE + PENDING APPROVAL BADGE) */}
+          <Link to="/fines" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-violet-500/40 bg-violet-500/10 dark:bg-violet-950/20 hover:border-violet-500 transition-all shadow-sm relative">
+            {/* 🔴 RED PULSING BADGE FOR UNPAID/PENDING FINES */}
+            {extraStats.finesStats.pendingCount > 0 && (
+              <span className="absolute -top-2 -left-2 flex items-center justify-center">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 shadow-md items-center gap-1">
+                  {extraStats.finesStats.pendingCount} Unpaid
+                </span>
+              </span>
+            )}
+
+            {/* 🟡 AMBER PENDING APPROVAL BADGE */}
             {pendingCounts.fines > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -214,22 +225,23 @@ export default function Dashboard() {
                 </span>
               </span>
             )}
-            <div className="rounded-2xl p-4 bg-violet-600 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><ShieldAlert size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Traffic Fines</h4>
-            <span className="text-[11px] font-bold text-violet-700 dark:text-violet-400 mt-1">
+
+            <div className="rounded-2xl p-3 sm:p-4 bg-violet-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><ShieldAlert size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Traffic Fines</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-violet-600 dark:text-violet-400 mt-1 truncate max-w-full">
               {extraStats.finesStats.pendingCount} Pending · {extraStats.finesStats.paidCount} Paid
             </span>
           </Link>
 
           {/* 🔵 4. SAVINGS CARD */}
-          <Link to="/savings" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-teal-500/30 dark:border-teal-500/20 bg-teal-50/70 dark:bg-teal-950/10 hover:border-teal-500 hover:bg-teal-500/[0.12] transition-all shadow-sm">
-            <div className="rounded-2xl p-4 bg-teal-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><Target size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Savings</h4>
-            <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 mt-1">{Math.round((extraStats.savingsGoal.saved / extraStats.savingsGoal.target) * 100)}% Goal</span>
+          <Link to="/savings" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-500/40 bg-teal-500/10 dark:bg-teal-950/20 hover:border-teal-500 transition-all shadow-sm">
+            <div className="rounded-2xl p-3 sm:p-4 bg-teal-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Target size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Savings</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-600 dark:text-teal-400 mt-1">{Math.round((extraStats.savingsGoal.saved / extraStats.savingsGoal.target) * 100)}% Goal</span>
           </Link>
 
           {/* 🟠 5. EXPENSES CARD */}
-          <Link to="/expenses" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-amber-500/30 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-950/10 hover:border-amber-500 hover:bg-amber-500/[0.12] transition-all shadow-sm relative">
+          <Link to="/expenses" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20 hover:border-amber-500 transition-all shadow-sm relative">
             {pendingCounts.expenses > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -238,23 +250,23 @@ export default function Dashboard() {
                 </span>
               </span>
             )}
-            <div className="rounded-2xl p-4 bg-amber-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><Wrench size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Expenses</h4>
-            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-500 mt-1">{formatRWF(extraStats.expensesApprovedSum)}</span>
+            <div className="rounded-2xl p-3 sm:p-4 bg-amber-500 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Wrench size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Expenses</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-amber-600 dark:text-amber-500 mt-1">{formatRWF(extraStats.expensesApprovedSum)}</span>
           </Link>
 
           {/* 🟣 6. HOLIDAYS CARD */}
-          <Link to="/non-working-days" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-indigo-500/30 dark:border-indigo-500/20 bg-indigo-50/70 dark:bg-indigo-950/10 hover:border-indigo-500 hover:bg-indigo-500/[0.12] transition-all shadow-sm">
-            <div className="rounded-2xl p-4 bg-indigo-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><CalendarOff size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Holidays</h4>
-            <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 mt-1">{extraStats.nonWorkingCount} Off-days</span>
+          <Link to="/non-working-days" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-indigo-500/40 bg-indigo-500/10 dark:bg-indigo-950/20 hover:border-indigo-500 transition-all shadow-sm">
+            <div className="rounded-2xl p-3 sm:p-4 bg-indigo-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><CalendarOff size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Holidays</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-indigo-600 dark:text-indigo-400 mt-1">{extraStats.nonWorkingCount} Off-days</span>
           </Link>
 
           {/* 🟤 7. LOGS CARD */}
-          <Link to="/activity" className="group flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-sky-500/30 dark:border-sky-500/20 bg-sky-50/70 dark:bg-sky-950/10 hover:border-sky-500 hover:bg-sky-500/[0.12] transition-all shadow-sm">
-            <div className="rounded-2xl p-4 bg-sky-500 text-white mb-3 shadow-md group-hover:scale-110 transition-transform"><History size={24} /></div>
-            <h4 className="text-sm font-bold text-ink tracking-tight">Logs</h4>
-            <span className="text-[11px] font-semibold text-sky-700 dark:text-sky-400 mt-1">Audit Trail</span>
+          <Link to="/activity" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-sky-500/40 bg-sky-500/10 dark:bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm">
+            <div className="rounded-2xl p-3 sm:p-4 bg-sky-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><History size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Logs</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-sky-600 dark:text-sky-400 mt-1">Audit Trail</span>
           </Link>
 
         </div>
