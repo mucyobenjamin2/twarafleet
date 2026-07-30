@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabaseClient'
 import twaraLogo from '../assets/logo.png'
 
 export default function Login() {
-  // 🎯 HAKOSOWE HANO: Twakuyeho ikosa rya syntonization ryari ryasigaye
   const { session, loading, signIn } = useAuth()
   const navigate = useNavigate()
   
@@ -67,64 +66,65 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 transition-colors duration-200">
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm space-y-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-100 transition-colors duration-200 px-4 sm:px-6 py-8">
+      <div className="w-full max-w-sm space-y-6">
+        
+        {/* LOGO & TITLE HEADER */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden flex items-center justify-center bg-[#003d29] shadow-md">
+            <img src={twaraLogo} alt="TwaraFleet Logo" className="w-full h-full object-cover" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">TwaraFleet</h1>
+          <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">Fleet ledger & Invest platform</p>
+        </div>
+
+        {/* LOGIN FORM */}
+        <form onSubmit={handleSubmit} className="space-y-4 bg-white dark:bg-[#1e293b] p-5 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl transition-colors duration-200">
+          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">Sign in to account</h2>
           
-          <div className="flex flex-col items-center text-center space-y-2">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center bg-[#003d29] shadow-md">
-              <img src={twaraLogo} alt="TwaraFleet Logo" className="w-full h-full object-cover" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white mt-2">TwaraFleet</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Fleet ledger & Invest platform</p>
+          <div className="space-y-1">
+            <input 
+              type="text" 
+              required 
+              value={identifier} 
+              onChange={e => setIdentifier(e.target.value)} 
+              className="w-full border border-slate-300 dark:border-slate-700 p-3 rounded-xl text-sm font-bold bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white focus:outline-none focus:border-emerald-600 transition-colors" 
+              placeholder="Phone number or Email"
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 bg-white dark:bg-[#1e293b] p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-200">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sign in to account</h2>
+          <div className="space-y-1.5">
+            <input 
+              type="password" 
+              required 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="w-full border border-slate-300 dark:border-slate-700 p-3 rounded-xl text-sm font-bold bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white focus:outline-none focus:border-emerald-600 transition-colors" 
+              placeholder="Password"
+            />
             
-            <div className="space-y-1">
-              <input 
-                type="text" 
-                required 
-                value={identifier} 
-                onChange={e => setIdentifier(e.target.value)} 
-                className="w-full border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg text-sm bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#003d29] transition-colors" 
-                placeholder="Phone number or Email"
-              />
+            <div className="flex justify-end pt-1">
+              <button 
+                type="button" 
+                onClick={handleForgotAlert}
+                className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-[#003d29] dark:hover:text-emerald-400 transition-colors"
+              >
+                Forgot password?
+              </button>
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <input 
-                type="password" 
-                required 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                className="w-full border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg text-sm bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#003d29] transition-colors" 
-                placeholder="Password"
-              />
-              
-              <div className="flex justify-end">
-                <button 
-                  type="button" 
-                  onClick={handleForgotAlert}
-                  className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-[#003d29] dark:hover:text-emerald-400 transition-colors"
-                >
-                  Forgot password?
-                </button>
-              </div>
-            </div>
+          {error && <p className="text-xs text-rose-500 font-bold">{error}</p>}
+          
+          <button 
+            type="submit" 
+            disabled={busy} 
+            className="w-full bg-[#003d29] hover:bg-[#00291b] text-white p-3 rounded-xl font-black text-sm transition-colors flex justify-center items-center gap-2 shadow-md active:scale-95"
+          >
+            {busy ? <Loader2 size={18} className="animate-spin text-white" /> : 'Sign in'}
+          </button>
+        </form>
 
-            {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-            
-            <button 
-              type="submit" 
-              disabled={busy} 
-              className="w-full bg-[#003d29] hover:bg-[#00291b] text-white p-2.5 rounded-lg font-medium text-sm transition-colors flex justify-center items-center gap-2 shadow-sm"
-            >
-              {busy ? <Loader2 size={16} className="animate-spin text-white" /> : 'Sign in'}
-            </button>
-          </form>
-        </div>
       </div>
     </div>
   )
