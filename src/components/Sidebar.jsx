@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Bike, UserRound, Link2, Wallet, AlertTriangle, Receipt,
   CalendarOff, PiggyBank, BellRing, ShieldCheck, Landmark, ClipboardCheck,
-  FolderOpen, History, Settings as SettingsIcon, ShieldAlert // 👈 Icon nshya ya Traffic Fines
+  FolderOpen, History, Settings as SettingsIcon, ShieldAlert, MessageSquare // 👈 Ongeza MessageSquare hano
 } from 'lucide-react'
 
 // Kuzana logo yawe nshya ivuye muri assets folder
@@ -23,7 +23,7 @@ const GROUPS = [
     items: [
       { to: '/collections', label: 'Collections', icon: Wallet },
       { to: '/debts', label: 'Debts', icon: AlertTriangle },
-      { to: '/fines', label: 'Traffic Fines', icon: ShieldAlert }, // 👈 Ongeza uyu murongo hano
+      { to: '/fines', label: 'Traffic Fines', icon: ShieldAlert },
       { to: '/expenses', label: 'Expenses', icon: Receipt },
       { to: '/savings', label: 'Savings Goals', icon: PiggyBank }
     ]
@@ -42,6 +42,7 @@ const GROUPS = [
   {
     label: 'System',
     items: [
+      { to: '/messages', label: 'Messages / Chat', icon: MessageSquare }, // 👈 Ongeza uyu murongo wa Messages hano
       { to: '/activity', label: 'Activity Log', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon }
     ]

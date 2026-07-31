@@ -16,7 +16,8 @@ import Collections from './pages/Collections'
 import Debts from './pages/Debts'
 import Expenses from './pages/Expenses'
 import SavingsGoals from './pages/SavingsGoals'
-import Fines from './pages/Fines' // 👈 Import ya Fines Page
+import Fines from './pages/Fines'
+import Messages from './pages/Messages' // 👈 Import ya Messages Chat Page
 
 // ---- COMPLIANCE & SYSTEM PAGES ----
 import Reminders from './pages/Reminders'
@@ -76,7 +77,8 @@ export default function App() {
             <Route path="debts" element={<Debts />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="savings" element={<SavingsGoals />} />
-            <Route path="fines" element={<Fines />} /> {/* 👈 Route nshya ya Fines */}
+            <Route path="fines" element={<Fines />} />
+            <Route path="messages" element={<Messages />} /> {/* 👈 Route nshya ya Messages / Chat */}
             
             {/* Compliance Section */}
             <Route path="reminders" element={<Reminders />} />

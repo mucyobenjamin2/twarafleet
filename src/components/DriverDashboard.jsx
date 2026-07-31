@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { LogOut, Moon, Sun, DollarSign, Wrench, History, Calendar, CheckCircle2, Clock, XCircle, ShieldAlert, Send, AlertTriangle, Bike, X, MessageSquare } from 'lucide-react';
+import ChatBox from '../components/ChatBox';
 
 import twaraLogo from '../assets/logo.png';
 
 export default function DriverDashboard() {
   const { profile, logout } = useAuth();
-  const [darkMode, setDarkMode] = useState(false); // Defaulting clean mode display
-  const [activeModal, setActiveModal] = useState(null); // 'versement' | 'depense' | 'history' | 'contact_admin' | null
+  const [darkMode, setDarkMode] = useState(true);
+  const [activeModal, setActiveModal] = useState(null);
   const [metaPlate, setMetaPlate] = useState('N/A');
+  const [adminUserId, setAdminUserId] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   // States za Traffic Fines
   const [fines, setFines] = useState([]);
@@ -25,9 +28,6 @@ export default function DriverDashboard() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('fuel'); 
   const [reason, setReason] = useState('');
-
-  // States za Direct Admin Message
-  const [adminMessage, setAdminMessage] = useState('');
 
   // States z'amateka (History)
   const [historyItems, setHistoryItems] = useState([]);
@@ -97,15 +97,104 @@ export default function DriverDashboard() {
 
       const { data: driverData } = await supabase
         .from('drivers')
-        .select('id')
+        .select('id, owner_id')
         .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle();
+
+      if (driverData?.owner_id) {
+        setAdminUserId(driverData.owner_id);
+      }
 
       fetchDriverFines(driverData?.id, currentPlate);
     }
 
     getFreshMetadata();
   }, [profile]);
+
+  // 🌟 Realtime + Polling ivanze kugira ngo umubare w'ubutumwa uzamuke neza cyane
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkUnread() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: driverData } = await supabase
+        .from('drivers')
+        .select('owner_id')
+        .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle();
+
+      if (!driverData?.owner_id) return;
+
+      const { count: countUnread } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('sender_id', driverData.owner_id)
+        .eq('is_read', false);
+
+      if (isMounted) {
+        setUnreadCount(countUnread || 0);
+      }
+    }
+
+    checkUnread();
+
+    async function setupRealtime() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel(`driver_messages_channel_${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'messages' },
+          (payload) => {
+            const newMsg = payload.new;
+            if (newMsg && newMsg.receiver_id === user.id) {
+              checkUnread();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    setupRealtime();
+
+    const interval = setInterval(() => {
+      checkUnread();
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Igihe umushoferi afunguye chat, umubare uhita uhinduka 0 maze akamenyetso kagahita kagenda burundu
+  useEffect(() => {
+    if (activeModal === 'contact_admin' && adminUserId) {
+      async function markAsRead() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('receiver_id', user.id)
+          .eq('sender_id', adminUserId)
+          .eq('is_read', false);
+
+        setUnreadCount(0);
+      }
+      markAsRead();
+    }
+  }, [activeModal, adminUserId]);
 
   const handleMarkFineAsPaid = async (fineId) => {
     try {
@@ -442,14 +531,6 @@ export default function DriverDashboard() {
     }
   };
 
-  const handleSendAdminMessage = (e) => {
-    e.preventDefault();
-    if (!adminMessage.trim()) return;
-    alert("Ubumwa bwawe bwoherejwe kuri Admin neza! 📩");
-    setAdminMessage('');
-    setActiveModal(null);
-  };
-
   const unpaidFines = fines.filter(f => f.status !== 'approved');
 
   return (
@@ -487,7 +568,7 @@ export default function DriverDashboard() {
       {/* MAIN CENTERED CONTAINER FOR MOBILE OPTIMIZATION */}
       <main className="max-w-md mx-auto p-4 space-y-6 flex flex-col justify-center items-center">
 
-        {/* 🚨 TRAFFIC FINES NOTIFICATION SECTION (HIGH CONTRAST LIGHT/DARK MODE) */}
+        {/* 🚨 TRAFFIC FINES NOTIFICATION SECTION */}
         {unpaidFines.length > 0 && (
           <div className="w-full space-y-2">
             <div className="flex items-center justify-between">
@@ -496,7 +577,6 @@ export default function DriverDashboard() {
               </h2>
             </div>
 
-            {/* COMPACT HIGH-CONTRAST CARD LIST */}
             <div className="flex flex-col gap-2.5 w-full">
               {unpaidFines.map(fine => (
                 <div 
@@ -544,7 +624,7 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* 🎨 CENTERED HIGH CONTRAST ACTION CARDS (LIGHT AND DARK MODE COMPATIBLE) */}
+        {/* 🎨 CENTERED HIGH CONTRAST ACTION CARDS */}
         <div className="w-full space-y-3">
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-400 text-center">
             Driver Action Services
@@ -552,7 +632,7 @@ export default function DriverDashboard() {
 
           <div className="flex flex-col gap-3.5 w-full">
             
-            {/* CARD 1: VERSEMENT (EMERALD GREEN) */}
+            {/* CARD 1: VERSEMENT */}
             <button
               onClick={() => { setActiveModal('versement'); setMsg({ type: '', text: '' }); }}
               className="w-full p-5 rounded-2xl border border-emerald-500/40 bg-white dark:bg-emerald-950/20 hover:border-emerald-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
@@ -575,7 +655,7 @@ export default function DriverDashboard() {
               </span>
             </button>
 
-            {/* CARD 2: DEPENSE (WARM AMBER) */}
+            {/* CARD 2: DEPENSE */}
             <button
               onClick={() => { setActiveModal('depense'); setMsg({ type: '', text: '' }); }}
               className="w-full p-5 rounded-2xl border border-amber-500/40 bg-white dark:bg-amber-950/20 hover:border-amber-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
@@ -598,7 +678,7 @@ export default function DriverDashboard() {
               </span>
             </button>
 
-            {/* CARD 3: HISTORY (SKY BLUE) */}
+            {/* CARD 3: HISTORY */}
             <button
               onClick={() => { setActiveModal('history'); setMsg({ type: '', text: '' }); }}
               className="w-full p-5 rounded-2xl border border-sky-500/40 bg-white dark:bg-sky-950/20 hover:border-sky-500 text-left transition-all shadow-sm active:scale-95 flex items-center justify-between group"
@@ -624,7 +704,7 @@ export default function DriverDashboard() {
           </div>
         </div>
 
-        {/* 📝 POPUP MODAL FOR FINE MOMO REF PROMPT */}
+        {/* POPUP MODAL FOR FINE MOMO REF PROMPT */}
         {payingFineId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-sm p-6 space-y-4 shadow-2xl">
@@ -673,8 +753,8 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* 📝 MODAL POPUP DIALOG TABS */}
-        {activeModal && (
+        {/* MODAL POPUP DIALOG TABS */}
+        {activeModal && activeModal !== 'contact_admin' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
               
@@ -683,7 +763,6 @@ export default function DriverDashboard() {
                   {activeModal === 'versement' && <><DollarSign className="text-emerald-600" size={18} /> Kohereza Versement</>}
                   {activeModal === 'depense' && <><Wrench className="text-amber-500" size={18} /> Gushyiramo Depense</>}
                   {activeModal === 'history' && <><History className="text-sky-600" size={18} /> Amateka y'Ibyumweru 52 Bishize</>}
-                  {activeModal === 'contact_admin' && <><MessageSquare className="text-emerald-500" size={18} /> Vugana na Admin</>}
                 </h2>
                 <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg">
                   <X size={20} />
@@ -696,7 +775,7 @@ export default function DriverDashboard() {
                 </div>
               )}
 
-              {/* MODAL content 1: VERSEMENT FORM */}
+              {/* MODAL 1: VERSEMENT FORM */}
               {activeModal === 'versement' && (
                 <form onSubmit={handleSubmitVersement} className="space-y-4">
                   <div>
@@ -759,7 +838,7 @@ export default function DriverDashboard() {
                 </form>
               )}
               
-              {/* MODAL content 2: DEPENSE FORM */}
+              {/* MODAL 2: DEPENSE FORM */}
               {activeModal === 'depense' && (
                 <form onSubmit={handleSubmitExpense} className="space-y-4">
                   <div>
@@ -826,7 +905,7 @@ export default function DriverDashboard() {
                 </form>
               )}
 
-              {/* MODAL content 3: HISTORY LIST */}
+              {/* MODAL 3: HISTORY LIST */}
               {activeModal === 'history' && (
                 <div className="space-y-3">
                   {loadingHistory ? (
@@ -881,62 +960,52 @@ export default function DriverDashboard() {
                 </div>
               )}
 
-              {/* MODAL content 4: CONTACT ADMIN FORM */}
-              {activeModal === 'contact_admin' && (
-                <form onSubmit={handleSendAdminMessage} className="space-y-4">
-                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                    Niba ufite ikibazo cyangwa ubusobanuro ushaka kugeza kuri Admin, wandike ubumwa bwawe hano:
-                  </p>
-
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-600 dark:text-slate-400 mb-1">
-                      Ubumwa bwawe (Message) *
-                    </label>
-                    <textarea 
-                      placeholder="Andika ubumwa cyangwa ikibazo hano..." 
-                      value={adminMessage} 
-                      onChange={(e) => setAdminMessage(e.target.value)} 
-                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" 
-                      rows={3}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal(null)}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                    >
-                      Siba
-                    </button>
-                    <button 
-                      type="submit" 
-                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-md flex items-center justify-center gap-1.5"
-                    >
-                      <Send size={14} /> Yohereza
-                    </button>
-                  </div>
-                </form>
-              )}
-
             </div>
           </div>
         )}
 
       </main>
 
-      {/* 🟢 FLOATING CONTACT ADMIN BUTTON */}
+      {/* 🟢 FLOATING CONTACT ADMIN / CHAT BUTTON (WITH UNREAD COUNT BADGE) */}
       <div className="fixed bottom-5 right-5 z-40">
         <button
-          onClick={() => { setActiveModal('contact_admin'); setMsg({ type: '', text: '' }); }}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 border-2 border-emerald-400"
+          onClick={() => setActiveModal('contact_admin')}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 border-2 border-emerald-400 relative"
           title="Vugana na Admin"
         >
           <MessageSquare size={22} />
           <span className="text-xs font-black hidden sm:inline pr-1">Contact Admin</span>
+          
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-600 border-2 border-white items-center justify-center text-[10px] text-white font-black">
+                {unreadCount}
+              </span>
+            </span>
+          )}
         </button>
       </div>
+
+      {/* REALTIME CHAT BOX MODAL COMPONENT */}
+      {activeModal === 'contact_admin' && adminUserId && (
+        <ChatBox
+          recipientId={adminUserId}
+          recipientName="Fleet Administrator"
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === 'contact_admin' && !adminUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-6 text-center space-y-3 max-w-sm">
+            <p className="text-sm font-bold text-rose-500">Admin ID ntabwo iraboneka kuri uyu mushoferi.</p>
+            <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-700 text-white rounded-xl text-xs font-black">
+              Funga
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

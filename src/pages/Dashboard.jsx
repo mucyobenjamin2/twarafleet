@@ -10,7 +10,8 @@ import {
   Wrench, 
   CalendarOff, 
   History,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquare
 } from 'lucide-react'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { LoadingSpinner } from '../components/Feedback'
@@ -37,6 +38,9 @@ export default function Dashboard() {
       paidCount: 0
     }
   })
+
+  // State yo kubara ubutumwa bushya butarasomwa (Unread Messages Count)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
 
   async function loadDashboardSummaryData() {
     try {
@@ -109,6 +113,15 @@ export default function Dashboard() {
         .from('non_working_days')
         .select('*', { count: 'exact', head: true })
         .eq('owner_id', user.id)
+
+      // 5. Unread Messages Count (Ubutumwa bwa drivers bugenewe admin butarasomwa)
+      const { count: unreadCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('is_read', false)
+
+      setUnreadMessagesCount(unreadCount || 0)
 
       setExtraStats({
         savingsGoal: { target: mainGoalAmount, saved: netSaved },
@@ -212,7 +225,7 @@ export default function Dashboard() {
 
       {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE CARDS) */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           
           {/* 🟢 1. COLLECTIONS CARD */}
           <Link to="/collections" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/20 hover:border-emerald-500 transition-all shadow-sm relative">
@@ -287,14 +300,29 @@ export default function Dashboard() {
             <span className="text-[10px] sm:text-[11px] font-mono font-black text-amber-600 dark:text-amber-500 mt-1">{formatRWF(extraStats.expensesApprovedSum)}</span>
           </Link>
 
-          {/* 🟣 6. HOLIDAYS CARD */}
+          {/* 🟣 6. CHAT / MESSAGES CARD (WITH PULSING UNREAD NOTIFICATION BADGE) */}
+          <Link to="/messages" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-600/40 bg-teal-600/10 dark:bg-teal-950/20 hover:border-teal-600 transition-all shadow-sm relative">
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-2 -right-2 flex items-center justify-center">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 shadow-md items-center gap-1">
+                  {unreadMessagesCount} New
+                </span>
+              </span>
+            )}
+            <div className="rounded-2xl p-3 sm:p-4 bg-teal-700 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Messages</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-700 dark:text-teal-400 mt-1">Live Chat</span>
+          </Link>
+
+          {/* 🟣 7. HOLIDAYS CARD */}
           <Link to="/non-working-days" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-indigo-500/40 bg-indigo-500/10 dark:bg-indigo-950/20 hover:border-indigo-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-indigo-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><CalendarOff size={20} /></div>
             <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Holidays</h4>
             <span className="text-[10px] sm:text-[11px] font-mono font-black text-indigo-600 dark:text-indigo-400 mt-1">{extraStats.nonWorkingCount} Off-days</span>
           </Link>
 
-          {/* 🟤 7. LOGS CARD */}
+          {/* 🟤 8. LOGS CARD */}
           <Link to="/activity" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-sky-500/40 bg-sky-500/10 dark:bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-sky-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><History size={20} /></div>
             <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Logs</h4>
