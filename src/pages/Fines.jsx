@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShieldAlert, Plus, CheckCircle2, Clock, Trash2, Search, Bike, User, Calendar, AlertTriangle, Check, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ShieldAlert, Plus, CheckCircle2, Clock, Trash2, Search, Bike, User, Calendar, AlertTriangle, Check, ArrowLeft, Eye, EyeOff, ExternalLink, Shield } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
 export default function Fines() {
@@ -160,7 +160,7 @@ export default function Fines() {
   )
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           {selectedVehicle ? (
@@ -169,31 +169,47 @@ export default function Fines() {
                 onClick={() => { setSelectedVehicle(null); setShowHistory(false); }}
                 className="inline-flex items-center gap-2 text-xs font-black text-sky-600 dark:text-sky-400 bg-paper border border-line px-3.5 py-1.5 rounded-xl hover:bg-paper-raised transition shadow-sm active:scale-95"
               >
-                <ArrowLeft size={16} /> Subira ku Binyabiziga Byose (Exit)
+                <ArrowLeft size={16} /> Subira ku Binyabiziga Byose
               </button>
-              <h1 className="font-display text-2xl font-black text-ink flex items-center gap-2 pt-1">
-                <Bike className="text-sky-600 dark:text-sky-400" size={28} /> {selectedVehicle.plate_number} Traffic Fines
+              <h1 className="font-display text-xl sm:text-2xl font-black text-ink flex items-center gap-2 pt-1">
+                <Bike className="text-sky-600 dark:text-sky-400" size={26} /> {selectedVehicle.plate_number} Traffic Fines
               </h1>
             </div>
           ) : (
             <div>
-              <h1 className="font-display text-2xl font-black text-ink flex items-center gap-2">
-                <ShieldAlert className="text-sky-600 dark:text-sky-400" size={28} /> Traffic Fines Manager
+              <h1 className="font-display text-xl sm:text-2xl font-black text-ink flex items-center gap-2">
+                <ShieldAlert className="text-sky-600 dark:text-sky-400" size={26} /> Traffic Fines Manager
               </h1>
-              <p className="text-sm font-bold text-ink-soft">Select a motorcycle card to review dedicated vehicle fines.</p>
+              <p className="text-xs sm:text-sm font-bold text-ink-soft">Select a motorcycle card to review dedicated vehicle fines.</p>
             </div>
           )}
         </div>
 
-        <button
-          onClick={() => {
-            if (selectedVehicle) setSelectedMoto(selectedVehicle.id)
-            setShowModal(true)
-          }}
-          className="flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md transition whitespace-nowrap"
-        >
-          <Plus size={18} /> Kwandika Fine Nshya
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {/* 🛡️ DIRECT POLICE PORTAL EXTERNAL LINK (AVOIDS 419 PAGE EXPIRED ERROR) */}
+          <a
+            href="https://fines.police.gov.rw/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-paper border-2 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 text-xs font-black px-4 py-2.5 rounded-xl shadow-sm transition whitespace-nowrap flex-1 sm:flex-none"
+          >
+            <div className="w-5 h-5 rounded-full bg-sky-600 flex items-center justify-center text-white shadow-sm">
+              <Shield size={12} className="fill-white text-sky-600" />
+            </div>
+            <span>Check Police Fines</span>
+            <ExternalLink size={14} className="ml-1 opacity-70" />
+          </a>
+
+          <button
+            onClick={() => {
+              if (selectedVehicle) setSelectedMoto(selectedVehicle.id)
+              setShowModal(true)
+            }}
+            className="flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md transition whitespace-nowrap flex-1 sm:flex-none"
+          >
+            <Plus size={18} /> Kwandika Fine Nshya
+          </button>
+        </div>
       </div>
 
       {!selectedVehicle ? (
@@ -217,7 +233,7 @@ export default function Fines() {
                 <div
                   key={moto.id}
                   onClick={() => setSelectedVehicle(moto)}
-                  className="p-6 rounded-2xl border-2 border-sky-500/40 bg-sky-500/10 dark:bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm cursor-pointer space-y-4 hover:scale-105 group relative overflow-visible flex flex-col justify-between items-center text-center backdrop-blur-md"
+                  className="p-5 sm:p-6 rounded-2xl border-2 border-sky-500/40 bg-sky-500/10 dark:bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm cursor-pointer space-y-4 hover:scale-105 group relative overflow-visible flex flex-col justify-between items-center text-center backdrop-blur-md"
                 >
                   {pendingDriverCount > 0 ? (
                     <span className="absolute -top-2.5 right-3 flex items-center gap-1 bg-amber-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md animate-pulse">
@@ -238,7 +254,7 @@ export default function Fines() {
                   ) : null}
 
                   <div className="w-full space-y-2 pt-1">
-                    <span className="plate inline-block text-xl sm:text-2xl font-mono font-black border border-sky-500/30 bg-paper text-ink px-4 py-1.5 rounded-xl uppercase tracking-widest shadow-sm">
+                    <span className="plate inline-block text-lg sm:text-xl font-mono font-black border border-sky-500/30 bg-paper text-ink px-4 py-1.5 rounded-xl uppercase tracking-widest shadow-sm">
                       {moto.plate_number}
                     </span>
 
@@ -259,9 +275,9 @@ export default function Fines() {
       ) : (
         <div className="space-y-6">
           {pendingApprovals.length > 0 && (
-            <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-md shadow-sm space-y-3">
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-md shadow-sm space-y-3">
               <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
-                <h3 className="font-black text-amber-800 dark:text-amber-300 flex items-center gap-2 text-sm uppercase tracking-wide">
+                <h3 className="font-black text-amber-800 dark:text-amber-300 flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wide">
                   <Clock size={18} className="animate-spin text-amber-500" /> Driver Payment Awaiting Approval ({pendingApprovals.length})
                 </h3>
               </div>
@@ -298,13 +314,11 @@ export default function Fines() {
           )}
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-line pb-3">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-black uppercase tracking-wider text-ink">
-                {showHistory ? "Historical Paid Fines Ledger" : "Unpaid & Pending Fines List"} ({searchFilteredFines.length})
-              </h3>
-            </div>
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-ink">
+              {showHistory ? "Historical Paid Fines Ledger" : "Unpaid & Pending Fines List"} ({searchFilteredFines.length})
+            </h3>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative flex-1 sm:w-64">
                 <Search size={18} className="absolute left-3.5 top-2.5 text-ink-soft" />
                 <input
@@ -318,7 +332,7 @@ export default function Fines() {
 
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center gap-1.5 text-xs font-black text-sky-600 dark:text-sky-400 bg-paper border border-line px-3 py-2 rounded-xl hover:bg-paper-raised transition shadow-sm whitespace-nowrap"
+                className="flex items-center justify-center gap-1.5 text-xs font-black text-sky-600 dark:text-sky-400 bg-paper border border-line px-3 py-2 rounded-xl hover:bg-paper-raised transition shadow-sm whitespace-nowrap"
               >
                 {showHistory ? <><EyeOff size={14} /> Hisha History</> : <><Eye size={14} /> Reba History</>}
               </button>
@@ -423,9 +437,9 @@ export default function Fines() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-paper rounded-2xl border border-line w-full max-w-md p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-black text-ink flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-paper rounded-2xl border border-line w-full max-w-md p-4 sm:p-6 space-y-4 shadow-xl my-8 max-h-[85vh] overflow-y-auto">
+            <h2 className="text-base sm:text-lg font-black text-ink flex items-center gap-2">
               <ShieldAlert className="text-sky-600 dark:text-sky-400" size={20} /> Wandike Traffic Fine Nshya
             </h2>
 
@@ -476,12 +490,12 @@ export default function Fines() {
                   placeholder="Urugero: RNP-2026-9081"
                   value={refNumber}
                   onChange={e => setRefNumber(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-sky-500"
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-sky-500"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black uppercase text-ink-soft mb-1">
                     Itariki Fine Yandikiwe *
@@ -490,7 +504,7 @@ export default function Fines() {
                     type="date"
                     value={issueDate}
                     onChange={e => setIssueDate(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-sky-500"
+                    className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-sky-500"
                     required
                   />
                 </div>
@@ -502,7 +516,7 @@ export default function Fines() {
                     type="date"
                     value={dueDate}
                     onChange={e => setDueDate(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-sky-500"
+                    className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-sky-500"
                   />
                 </div>
               </div>
@@ -516,7 +530,7 @@ export default function Fines() {
                   placeholder="25000"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-sky-500"
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-sky-500"
                   required
                 />
               </div>
@@ -529,7 +543,7 @@ export default function Fines() {
                   placeholder="Urugero: Kuza nabi mu muhanda / Kutambara casq..."
                   value={reason}
                   onChange={e => setReason(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm text-ink font-bold focus:outline-none focus:border-sky-500"
+                  className="w-full p-3 rounded-xl border border-line bg-paper-raised text-sm font-bold text-ink focus:outline-none focus:border-sky-500"
                   rows={2}
                   required
                 />

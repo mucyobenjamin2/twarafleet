@@ -64,10 +64,7 @@ export default function Messages() {
 
           setUnreadCounts(countsMap)
           setLastMessages(lastMsgMap)
-
-          if (driverData.length > 0) {
-            setSelectedDriver(driverData[0])
-          }
+          // 🛑 Nta select ya mbere twongeye gushyiramo (selectedDriver izaba ari null kugira ngo umukoresha ahitemo uwo ashaka)
         }
       } catch (err) {
         console.error('Error fetching drivers for chat:', err)
@@ -302,7 +299,7 @@ export default function Messages() {
         <div className={`col-span-2 flex flex-col bg-paper h-full min-h-0 ${selectedDriver ? 'flex' : 'hidden md:flex'}`}>
           {selectedDriver ? (
             <>
-              {/* 🟡 FREEZED / FIXED HEADER (Aho nashyize umuhondo wo hejuru) */}
+              {/* HEADER */}
               <div className="p-4 border-b border-line bg-paper-raised flex items-center gap-3 shrink-0 z-10 shadow-sm">
                 <button
                   onClick={() => setSelectedDriver(null)}
@@ -320,7 +317,7 @@ export default function Messages() {
                 </div>
               </div>
 
-              {/* 🔴 SCROLLED MESSAGES CONTAINER (Aho wazengurukije umutuku) */}
+              {/* MESSAGES CONTAINER */}
               <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-paper/30 scrollbar-thin">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-ink-soft text-xs font-bold space-y-1">
@@ -350,7 +347,7 @@ export default function Messages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* 🟡 FREEZED / FIXED FOOTER FORM (Aho nashyize umuhondo wo hasi) */}
+              {/* FOOTER FORM */}
               <form onSubmit={handleSendMessage} className="p-3 border-t border-line bg-paper-raised flex items-center gap-2 shrink-0 z-10 shadow-sm">
                 <input
                   type="text"
@@ -369,7 +366,7 @@ export default function Messages() {
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center text-ink-soft text-xs font-bold space-y-2">
-              <MessageSquare size={40} className="opacity-20" />
+              <MessageSquare size= {40} className="opacity-20" />
               <p>Hitamo umushoferi ibumoso kugira ngo utangire kuganira nawe.</p>
             </div>
           )}

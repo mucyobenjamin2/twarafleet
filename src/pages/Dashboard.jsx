@@ -142,37 +142,37 @@ export default function Dashboard() {
     loadDashboardSummaryData()
   }, [])
 
-  if (loading || !data) return <LoadingSpinner label="Pulling today's numbers…" />
+  if (loading || !data) return <LoadingSpinner label="Pulling today’s numbers…" />
 
   const collectionRate = data.targetTotal > 0 ? Math.round((data.collectedTotal / data.targetTotal) * 100) : 0
   const totalActionPending = pendingCounts.versements + pendingCounts.expenses + pendingCounts.fines
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 text-slate-100">
       
       {/* HEADER WITH TITLE & OVERALL PENDING ACTION BADGE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div>
-          <h1 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">Dashboard</h1>
-          <p className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">Real-time snapshot across your fleet.</p>
+          <h1 className="font-display text-2xl font-black text-slate-100">Dashboard</h1>
+          <p className="text-xs sm:text-sm font-bold text-slate-400">Real-time snapshot across your fleet.</p>
         </div>
         
         {totalActionPending > 0 && (
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 px-3.5 py-2 rounded-xl text-xs font-black animate-pulse self-start sm:self-auto">
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3.5 py-2 rounded-xl text-xs font-black animate-pulse self-start sm:self-auto">
             <Clock size={14} />
             <span>Actions Pending Approval: {totalActionPending}</span>
           </div>
         )}
       </div>
 
-      {/* 📊 COMBINED BIG METRICS CARD (ARRANGED AS CLEAN ROOMS/SECTIONS) */}
-      <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+      {/* 📊 COMBINED BIG METRICS CARD (ARRANGED AS CLEAN ROOMS/SECTIONS - DARK MODE FORCED) */}
+      <div className="rounded-3xl border border-slate-800 bg-[#1e293b] p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">Fleet Performance Overview</p>
-            <h2 className="font-display text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">Collections & Fleet Status</h2>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-400">Fleet Performance Overview</p>
+            <h2 className="font-display text-xl font-black text-slate-100 mt-0.5">Collections & Fleet Status</h2>
           </div>
-          <span className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <TrendingUp size={24} />
           </span>
         </div>
@@ -180,55 +180,55 @@ export default function Dashboard() {
         {/* ARRANGED ROOMS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Room 1: Collected Today */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+          <div className="p-5 rounded-2xl bg-[#0f172a] border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-black uppercase">
               <span>Collected Today</span>
-              <Wallet size={18} className="text-emerald-600 dark:text-emerald-400" />
+              <Wallet size={18} className="text-emerald-400" />
             </div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-100">
               {formatRWF(data.collectedTotal)}
             </p>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+            <p className="text-xs font-bold text-slate-400">
               {collectionRate}% of {formatRWF(data.targetTotal)} target
             </p>
           </div>
 
           {/* Room 2: Active Motorcycles */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+          <div className="p-5 rounded-2xl bg-[#0f172a] border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-black uppercase">
               <span>Active Motorcycles</span>
-              <Bike size={18} className="text-teal-600 dark:text-teal-400" />
+              <Bike size={18} className="text-teal-400" />
             </div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-100">
               {data.activeFleetCount}
             </p>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+            <p className="text-xs font-bold text-slate-400">
               {data.motorcyclesReported}/{data.activeFleetCount} reported today
             </p>
           </div>
 
           {/* Room 3: Fleet Size */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs font-black uppercase">
+          <div className="p-5 rounded-2xl bg-[#0f172a] border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-black uppercase">
               <span>Total Fleet Size</span>
-              <Target size={18} className="text-sky-600 dark:text-sky-400" />
+              <Target size={18} className="text-sky-400" />
             </div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-100">
               {data.fleetCount}
             </p>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
+            <p className="text-xs font-bold text-slate-400 truncate">
               {data.statusBreakdown.filter(s => s.status !== 'active').map(s => `${s.count} ${s.status}`).join(' · ') || 'All active'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE CARDS) */}
+      {/* 📂 HIGH CONTRAST CHANNELS (MOBILE RESPONSIVE CARDS - FORCED DARK MODE) */}
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           
           {/* 🟢 1. COLLECTIONS CARD */}
-          <Link to="/collections" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/20 hover:border-emerald-500 transition-all shadow-sm relative">
+          <Link to="/collections" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-500 transition-all shadow-sm relative">
             {pendingCounts.versements > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -238,21 +238,21 @@ export default function Dashboard() {
               </span>
             )}
             <div className="rounded-2xl p-3 sm:p-4 bg-emerald-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Wallet size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Collections</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-emerald-600 dark:text-emerald-400 mt-1">{formatRWF(data.collectedTotal)}</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Collections</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-emerald-400 mt-1">{formatRWF(data.collectedTotal)}</span>
           </Link>
 
           {/* 🔴 2. DEBTS CARD */}
-          <Link to="/debts" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/20 hover:border-rose-500 transition-all shadow-sm">
+          <Link to="/debts" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-rose-500/40 bg-rose-950/20 hover:border-rose-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-rose-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><AlertTriangle size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Debts</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-rose-600 dark:text-rose-400 mt-1">
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Debts</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-rose-400 mt-1">
               {formatRWF(data.debtTotal)}
             </span>
           </Link>
 
           {/* 🟣 3. TRAFFIC FINES CARD */}
-          <Link to="/fines" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-violet-500/40 bg-violet-500/10 dark:bg-violet-950/20 hover:border-violet-500 transition-all shadow-sm relative">
+          <Link to="/fines" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-violet-500/40 bg-violet-950/20 hover:border-violet-500 transition-all shadow-sm relative">
             {extraStats.finesStats.pendingCount > 0 && (
               <span className="absolute -top-2 -left-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -272,21 +272,21 @@ export default function Dashboard() {
             )}
 
             <div className="rounded-2xl p-3 sm:p-4 bg-violet-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><ShieldAlert size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Traffic Fines</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-violet-600 dark:text-violet-400 mt-1 truncate max-w-full">
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Traffic Fines</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-violet-400 mt-1 truncate max-w-full">
               {extraStats.finesStats.pendingCount} Pending · {extraStats.finesStats.paidCount} Paid
             </span>
           </Link>
 
           {/* 🔵 4. SAVINGS CARD */}
-          <Link to="/savings" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-500/40 bg-teal-500/10 dark:bg-teal-950/20 hover:border-teal-500 transition-all shadow-sm">
+          <Link to="/savings" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-500/40 bg-teal-950/20 hover:border-teal-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-teal-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Target size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Savings</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-600 dark:text-teal-400 mt-1">{Math.round((extraStats.savingsGoal.saved / extraStats.savingsGoal.target) * 100)}% Goal</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Savings</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-400 mt-1">{Math.round((extraStats.savingsGoal.saved / extraStats.savingsGoal.target) * 100)}% Goal</span>
           </Link>
 
           {/* 🟠 5. EXPENSES CARD */}
-          <Link to="/expenses" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20 hover:border-amber-500 transition-all shadow-sm relative">
+          <Link to="/expenses" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-amber-500/40 bg-amber-950/20 hover:border-amber-500 transition-all shadow-sm relative">
             {pendingCounts.expenses > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -296,12 +296,12 @@ export default function Dashboard() {
               </span>
             )}
             <div className="rounded-2xl p-3 sm:p-4 bg-amber-500 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><Wrench size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Expenses</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-amber-600 dark:text-amber-500 mt-1">{formatRWF(extraStats.expensesApprovedSum)}</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Expenses</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-amber-500 mt-1">{formatRWF(extraStats.expensesApprovedSum)}</span>
           </Link>
 
-          {/* 🟣 6. CHAT / MESSAGES CARD (WITH PULSING UNREAD NOTIFICATION BADGE) */}
-          <Link to="/messages" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-600/40 bg-teal-600/10 dark:bg-teal-950/20 hover:border-teal-600 transition-all shadow-sm relative">
+          {/* 🟣 6. CHAT / MESSAGES CARD */}
+          <Link to="/messages" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-teal-600/40 bg-teal-950/20 hover:border-teal-600 transition-all shadow-sm relative">
             {unreadMessagesCount > 0 && (
               <span className="absolute -top-2 -right-2 flex items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -311,22 +311,22 @@ export default function Dashboard() {
               </span>
             )}
             <div className="rounded-2xl p-3 sm:p-4 bg-teal-700 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Messages</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-700 dark:text-teal-400 mt-1">Live Chat</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Messages</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-teal-400 mt-1">Live Chat</span>
           </Link>
 
           {/* 🟣 7. HOLIDAYS CARD */}
-          <Link to="/non-working-days" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-indigo-500/40 bg-indigo-500/10 dark:bg-indigo-950/20 hover:border-indigo-500 transition-all shadow-sm">
+          <Link to="/non-working-days" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-indigo-500/40 bg-indigo-950/20 hover:border-indigo-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-indigo-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><CalendarOff size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Holidays</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-indigo-600 dark:text-indigo-400 mt-1">{extraStats.nonWorkingCount} Off-days</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Holidays</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-indigo-400 mt-1">{extraStats.nonWorkingCount} Off-days</span>
           </Link>
 
           {/* 🟤 8. LOGS CARD */}
-          <Link to="/activity" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-sky-500/40 bg-sky-500/10 dark:bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm">
+          <Link to="/activity" className="group flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl border-2 border-sky-500/40 bg-sky-950/20 hover:border-sky-500 transition-all shadow-sm">
             <div className="rounded-2xl p-3 sm:p-4 bg-sky-600 text-white mb-2 shadow-md group-hover:scale-110 transition-transform"><History size={20} /></div>
-            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Logs</h4>
-            <span className="text-[10px] sm:text-[11px] font-mono font-black text-sky-600 dark:text-sky-400 mt-1">Audit Trail</span>
+            <h4 className="text-xs sm:text-sm font-black text-slate-100 tracking-tight">Logs</h4>
+            <span className="text-[10px] sm:text-[11px] font-mono font-black text-sky-400 mt-1">Audit Trail</span>
           </Link>
 
         </div>
