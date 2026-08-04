@@ -21,7 +21,7 @@ export default function Debts() {
       // Soma amadeni yose afite isano n'uyu Admin (owner)
       const { data, error } = await supabase
         .from('debts')
-        .select('*, motorcycles(plate_number, weekly_off_day), drivers(full_name)')
+        .select('*, motorcycles(plate_number), drivers(full_name)')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -122,19 +122,8 @@ export default function Debts() {
     }
   }
 
-  // 🔥 Yungurura hano akoresheje lowercase ngo status zose zihure 100% kandi wirinde ko ideni ryo kuri day off ryagaragara niba rihari!
+  // 🔥 Yungurura hano akoresheje lowercase ngo status zose zihure 100%!
   const filteredDebts = debts.filter(d => {
-    // Isuzuma rya Day Off: Niba itariki y'ideni ariyo Day Off ya moto, tuyihisha kugira ngo itagaragara mu madeni
-    if (d.debt_date && d.motorcycles?.weekly_off_day) {
-      const debtDateObj = new Date(d.debt_date)
-      const dayName = debtDateObj.toLocaleDateString('en-US', { weekday: 'long' })
-      const motoOffDay = d.motorcycles.weekly_off_day.trim().toLowerCase()
-      const currentDebtDay = dayName.trim().toLowerCase()
-      if (motoOffDay && motoOffDay === currentDebtDay) {
-        return false
-      }
-    }
-
     const currentDebtStatus = (d.status || '').toLowerCase().trim()
     const currentFilterStatus = (filterStatus || '').toLowerCase().trim()
 
